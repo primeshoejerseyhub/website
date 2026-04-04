@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contact Us — Prime Shoe Jersey Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/style.css"/>
+  <style>
+    .contact-hero {
+      background: var(--dark-2);
+      border-bottom: 1px solid var(--border-solid);
+      padding: 60px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .contact-hero::after {
+      content: 'CONTACT';
+      position: absolute;
+      font-family: var(--font-display);
+      font-size: 20vw;
+      color: rgba(56,189,248,0.025);
+      right: -3%;
+      bottom: -10%;
+      line-height: 0.9;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .contact-card {
+      background: var(--dark-2);
+      border: 1px solid var(--border-solid);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      transition: border-color 0.2s, transform 0.2s;
+      height: 100%;
+    }
+    .contact-card:hover { border-color: rgba(56,189,248,0.35); transform: translateY(-3px); }
+    .contact-card-icon { font-size: 2.4rem; margin-bottom: 16px; }
+    .contact-card-title { font-family: var(--font-cond); font-size: 18px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+    .contact-card-sub { font-size: 13px; color: var(--silver); line-height: 1.6; margin-bottom: 20px; }
+    .contact-card-val { font-family: var(--font-cond); font-size: 16px; font-weight: 700; color: var(--blue); margin-bottom: 16px; letter-spacing: 0.04em; }
+
+    /* Contact Form */
+    .contact-form-wrap {
+      background: var(--dark-2);
+      border: 1px solid var(--border-solid);
+      border-radius: var(--radius-xl);
+      padding: 36px;
+    }
+
+    /* FAQ */
+    .faq-item {
+      border-bottom: 1px solid var(--border-solid);
+    }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-question {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0;
+      cursor: pointer;
+      font-family: var(--font-cond);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      transition: color 0.2s;
+      user-select: none;
+    }
+    .faq-question:hover { color: var(--blue); }
+    .faq-icon { font-size: 18px; color: var(--silver); transition: transform 0.3s, color 0.2s; flex-shrink: 0; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); color: var(--blue); }
+    .faq-answer {
+      height: 0; overflow: hidden;
+      transition: height 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .faq-answer-inner { padding: 0 0 18px; font-size: 13px; color: rgba(240,246,252,0.75); line-height: 1.75; }
+
+    /* Map placeholder */
+    .map-placeholder {
+      background: var(--dark-2);
+      border: 1px solid var(--border-solid);
+      border-radius: var(--radius-lg);
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--silver);
+    }
+
+    /* Success message */
+    .form-success {
+      background: rgba(63,185,80,0.08);
+      border: 1px solid rgba(63,185,80,0.25);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      text-align: center;
+      display: none;
+    }
+    .form-success.visible { display: block; animation: fadeUp 0.4s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    @media(max-width: 768px) {
+      .contact-grid { grid-template-columns: 1fr !important; }
+      .contact-layout { grid-template-columns: 1fr !important; }
+    }
+  </style>
+  <style>
+    /* Mobile search overlay */
+    #mobile-search-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(8,12,16,0.92);
+      backdrop-filter: blur(12px);
+      align-items: flex-start;
+      justify-content: center;
+    }
+    #mobile-search-overlay.open { display: flex; }
+    #mobile-search-box {
+      width: 100%;
+      max-width: 600px;
+      background: var(--dark-2);
+      border-bottom: 1px solid var(--border-solid);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    #mobile-search-dropdown {
+      max-height: 60vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #mobile-search-dropdown .search-result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-solid);
+      transition: background 0.15s;
+      touch-action: manipulation;
+    }
+    #mobile-search-dropdown .search-result-item:active,
+    #mobile-search-dropdown .search-result-item:hover { background: var(--dark-3); }
+    #mobile-search-dropdown .search-result-item img {
+      width: 48px; height: 48px; object-fit: cover;
+      border-radius: 6px; flex-shrink: 0;
+    }
+    #mobile-search-dropdown .search-result-item .name {
+      font-weight: 600; font-size: 13px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #mobile-search-dropdown .search-result-item .price {
+      font-family: var(--font-display); font-size: 0.95rem; color: var(--blue);
+    }
+    @media (max-width: 480px) {
+      .mobile-search-trigger { display: flex !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-item">💬 WhatsApp Support Available</span><span class="ticker-item">📱 Mon–Sat 10am–8pm IST</span><span class="ticker-item">⚡ Fast Response Guaranteed</span><span class="ticker-item">✅ 5000+ Happy Customers</span></div></div>
+
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="nav-left">
+      <button id="hamburger" class="nav-icon-btn"><div class="hamburger-lines"><span></span><span></span><span></span></div></button>
+    </div>
+    <a href="index.html" class="nav-logo">
+      <img src="assets/images/logo.png" alt="Logo" class="nav-logo-img" onerror="this.style.display='none'"/>
+      <div class="nav-logo-text"><span class="brand-top">Prime Shoe</span><span class="brand-sub">Jersey Hub</span></div>
+    </a>
+    <div class="nav-right">
+      <nav class="nav-links">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="shop.html" class="nav-link">Shop</a>
+        <a href="about.html" class="nav-link">About</a>
+        <a href="contact.html" class="nav-link active">Contact</a>
+      </nav>
+            <!-- Mobile search icon (shown on mobile only) -->
+      <button id="mobile-search-btn" class="nav-icon-btn mobile-search-trigger" aria-label="Search">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="20" height="20">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </button>
+      <button class="nav-icon-btn" data-cart-trigger>
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span class="cart-badge" style="display:none;">0</span>
+      </button>
+    </div>
+  </div>
+</nav>
+<div id="mobile-nav"><div class="mobile-nav-links">
+  <a href="index.html" class="mobile-nav-link">🏠 Home</a>
+  <a href="shop.html" class="mobile-nav-link">🛍️ Shop</a>
+  <a href="about.html" class="mobile-nav-link">ℹ️ About</a>
+  <a href="contact.html" class="mobile-nav-link">📞 Contact</a>
+</div></div>
+
+<!-- Hero -->
+<div class="contact-hero">
+  <div class="container" style="position:relative;z-index:2;">
+    <div class="section-label reveal" style="margin-bottom:14px;">Get in Touch</div>
+    <h1 class="section-title reveal" style="font-size:clamp(2.5rem,7vw,5rem);">WE'RE HERE<br/>TO HELP</h1>
+    <p style="color:var(--silver);font-size:15px;margin-top:14px;max-width:440px;line-height:1.7;" class="reveal">Questions about orders, returns, sizing, or anything else — we're just a WhatsApp message away.</p>
+  </div>
+</div>
+
+<!-- MOBILE SEARCH OVERLAY -->
+<div id="mobile-search-overlay" role="dialog" aria-modal="true" aria-label="Search">
+  <div id="mobile-search-box">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-solid);">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18" style="color:var(--silver);flex-shrink:0;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="search" id="mobile-search-input" placeholder="Search jerseys, studs, shoes..." autocomplete="off"
+        style="flex:1;background:transparent;border:none;outline:none;font-size:16px;color:var(--white);font-family:var(--font-body);"/>
+      <button id="mobile-search-close" style="background:none;border:none;color:var(--silver);cursor:pointer;padding:4px;font-size:20px;line-height:1;touch-action:manipulation;">&#10005;</button>
+    </div>
+    <div id="mobile-search-dropdown"></div>
+  </div>
+</div>
+
+<!-- Contact Cards -->
+<section class="section-pad">
+  <div class="container">
+    <div class="contact-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:60px;">
+      <!-- WhatsApp (primary) -->
+      <div class="contact-card reveal" style="background:rgba(37,211,102,0.04);border-color:rgba(37,211,102,0.2);">
+        <div class="contact-card-icon">💬</div>
+        <div class="contact-card-title" style="color:var(--green);">WhatsApp</div>
+        <div class="contact-card-sub">Fastest way to reach us. We typically reply within 30 minutes during business hours. Send order queries, screenshots, and questions here.</div>
+        <div class="contact-card-val" style="color:var(--green);">+91 98765 43210</div>
+        <a href="https://wa.me/919239394022?text=Hi%20Prime%20Shoe%20Jersey%20Hub%2C%20I%20need%20help!" target="_blank" class="btn btn-green btn-full" style="padding:13px;">Open WhatsApp →</a>
+      </div>
+      <!-- Email -->
+      <div class="contact-card reveal delay-1">
+        <div class="contact-card-icon">📧</div>
+        <div class="contact-card-title">Email</div>
+        <div class="contact-card-sub">For non-urgent queries, feedback, or bulk orders. We reply to all emails within 24 hours on working days.</div>
+        <div class="contact-card-val">primeshoejerseyhub24@gmail.com</div>
+        <a href="mailto:primeshoejerseyhub24@gmail.com" class="btn btn-outline btn-full" style="padding:13px;">Send Email →</a>
+      </div>
+      <!-- Instagram -->
+      <div class="contact-card reveal delay-2">
+        <div class="contact-card-icon">📷</div>
+        <div class="contact-card-title">Instagram</div>
+        <div class="contact-card-sub">Follow us for new arrivals, behind-the-scenes, customer photos, and exclusive drops. DM us for quick queries.</div>
+        <div class="contact-card-val">@primeshoejerseyhub</div>
+        <a href="https://www.instagram.com/primeshoejerseyhub/" target="_blank" class="btn btn-outline btn-full" style="padding:13px;">Follow on Instagram →</a>
+      </div>
+    </div>
+
+    <!-- Layout: Form + Info -->
+    <div class="contact-layout" style="display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start;">
+      <!-- Contact Form -->
+      <div class="contact-form-wrap reveal">
+        <div class="section-label" style="margin-bottom:14px;">Send a Message</div>
+        <h2 style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:0.04em;margin-bottom:24px;">QUICK ENQUIRY</h2>
+        <div id="contact-form">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+              <label class="form-label" for="c-name">Your Name *</label>
+              <input class="form-input" type="text" id="c-name" placeholder="Rahul Sharma"/>
+            </div>
+            <div>
+              <label class="form-label" for="c-phone">Phone / WhatsApp *</label>
+              <input class="form-input" type="tel" id="c-phone" placeholder="+91 98765 43210"/>
+            </div>
+            <div style="grid-column:span 2;">
+              <label class="form-label" for="c-email">Email (optional)</label>
+              <input class="form-input" type="email" id="c-email" placeholder="rahul@email.com"/>
+            </div>
+            <div style="grid-column:span 2;">
+              <label class="form-label" for="c-subject">Subject *</label>
+              <select class="form-input" id="c-subject">
+                <option value="">Select a topic</option>
+                <option value="order">Order Status / Tracking</option>
+                <option value="payment">Payment Issue</option>
+                <option value="return">Return / Exchange</option>
+                <option value="sizing">Size Query</option>
+                <option value="product">Product Availability</option>
+                <option value="bulk">Bulk Order</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div style="grid-column:span 2;">
+              <label class="form-label" for="c-message">Message *</label>
+              <textarea class="form-input" id="c-message" rows="4" placeholder="Describe your query in detail. Include your Order ID if applicable..."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-blue" style="flex:1;padding:14px;" onclick="submitContactForm()">Send Message →</button>
+            <a href="https://wa.me/919239394022" target="_blank" class="btn btn-green" style="padding:14px 20px;">💬 WhatsApp Instead</a>
+          </div>
+        </div>
+        <div class="form-success" id="contact-success">
+          <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+          <div style="font-family:var(--font-display);font-size:1.5rem;margin-bottom:8px;">MESSAGE SENT!</div>
+          <p style="font-size:13px;color:rgba(240,246,252,0.75);">Thank you! We'll get back to you within 24 hours. For faster help, WhatsApp us directly.</p>
+          <a href="https://wa.me/919239394022" target="_blank" class="btn btn-green btn-sm" style="margin-top:14px;display:inline-flex;">💬 Chat on WhatsApp</a>
+        </div>
+      </div>
+
+      <!-- Info + Hours -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="background:var(--dark-2);border:1px solid var(--border-solid);border-radius:var(--radius-lg);padding:24px;" class="reveal">
+          <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--silver);margin-bottom:14px;">Business Hours</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--silver);">Monday – Saturday</span><span style="font-weight:600;color:var(--green);">10:00 AM – 8:00 PM</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--silver);">Sunday</span><span style="font-weight:600;color:var(--red);">Closed</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--silver);">Response Time</span><span style="font-weight:600;">Within 30 mins</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--silver);">Dispatch Time</span><span style="font-weight:600;">Within 24 hrs</span></div>
+          </div>
+        </div>
+        <div style="background:var(--dark-2);border:1px solid var(--border-solid);border-radius:var(--radius-lg);padding:24px;" class="reveal">
+          <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--silver);margin-bottom:14px;">Location</div>
+          <div class="footer-contact-item"><span class="footer-contact-icon">📍</span><span>Kolkata, West Bengal, India</span></div>
+          <div class="footer-contact-item"><span class="footer-contact-icon">📦</span><span>Ships PAN India</span></div>
+          <div class="map-placeholder" style="margin-top:14px;">
+            <div style="font-size:2rem;">📍</div>
+            <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Kolkata, India</div>
+            <div style="font-size:11px;color:var(--silver);">Ships Nationwide</div>
+          </div>
+        </div>
+        <div style="background:var(--blue-tint);border:1px solid rgba(56,189,248,0.25);border-radius:var(--radius-lg);padding:20px;" class="reveal">
+          <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;">💡 Pro Tip</div>
+          <div style="font-size:13px;color:rgba(240,246,252,0.8);line-height:1.6;">For the fastest help, WhatsApp us with your <strong>Order ID</strong> and issue. We resolve most queries within an hour!</div>
+          <a href="https://wa.me/919239394022" target="_blank" class="btn btn-green btn-sm btn-full" style="margin-top:12px;">💬 WhatsApp Now</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section style="padding:0 0 80px;">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px;">
+      <div class="section-label reveal" style="justify-content:center;">Common Questions</div>
+      <h2 class="section-title reveal" style="margin-top:10px;font-size:clamp(1.8rem,4vw,3rem);">FAQ</h2>
+    </div>
+    <div style="max-width:700px;margin:0 auto;background:var(--dark-2);border:1px solid var(--border-solid);border-radius:var(--radius-xl);padding:16px 28px;" class="reveal" id="faq-container">
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">How do I place an order?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">Browse our shop, select your product and size, add to cart, and proceed to checkout. Fill in your delivery details and click "Place Order." You'll then receive a UPI ID and QR code to complete payment. Send your payment screenshot on WhatsApp and your order will be confirmed within 1–2 hours.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">How does payment work?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">We accept UPI payments only — GPay, PhonePe, Paytm, BHIM, or any UPI app. After placing your order, pay to our UPI ID shown on the confirmation screen, then send the payment screenshot to our WhatsApp number (+91 98765 43210). Your order will be dispatched within 24 hours of payment verification.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">How long does delivery take?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">We dispatch orders within 24 hours of payment confirmation. Standard delivery takes 2–5 working days for metro cities and 4–7 working days for other locations. You'll receive tracking details via WhatsApp once your order is shipped.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">What is your return policy?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">We offer a 7-day hassle-free return policy. If you receive a damaged, wrong, or defective product, WhatsApp us within 7 days of delivery with photos. We'll arrange a pickup and send a replacement or full refund. Size exchanges are also accepted within 7 days if the item is unwashed and unworn.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">Are your products authentic?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">Yes — we only source from trusted, verified suppliers. All products are quality-checked before dispatch. We don't sell low-quality replicas. What you see in the photos is exactly what you receive. If you're ever unsatisfied with quality, we'll make it right.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">How do I choose the right size?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">Our jerseys follow standard Indian sizing: S fits 36–38" chest, M fits 38–40", L fits 40–42", XL fits 42–44", XXL fits 44–46". For football boots, we recommend going half a size up from your regular shoe size. If you're unsure, WhatsApp us your measurements and we'll help you choose.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFAQ(this)">Do you offer bulk / wholesale orders?<span class="faq-icon">+</span></div>
+        <div class="faq-answer"><div class="faq-answer-inner">Yes! We offer special pricing for bulk orders of 10+ items. This is popular with football clubs, schools, and sports academies. Email us at primeshoejerseyhub24@gmail.com or WhatsApp us with your requirements and we'll share a custom quote within 24 hours.</div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="index.html" style="display:inline-flex;align-items:center;gap:10px;margin-bottom:4px;">
+          <img src="assets/images/logo.png" alt="Logo" style="height:32px;width:32px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'"/>
+          <div class="nav-logo-text"><span class="brand-top" style="font-size:14px;">Prime Shoe</span><span class="brand-sub" style="font-size:8px;">Jersey Hub</span></div>
+        </a>
+        <p class="footer-brand-desc">India's trusted destination for premium football jerseys, studs & gear.</p>
+      </div>
+
+    <div>  
+      <div class="footer-col-title">Useful links</div>
+        <div class="footer-links">
+          <a href="privacy.html" class="footer-link">Privacy Policy</a>
+          <a href="refund-policy.html" class="footer-link">Refund Policy</a>
+          <a href="terms.html" class="footer-link">Terms of Service</a>
+          <a href="shipping.html" class="footer-link">Shipping Policy</a>
+
+        </div>
+      </div>
+
+      <div>  
+      <div class="footer-col-title">GET TO KNOW US</div>
+        <div class="footer-links">
+         
+          <a href="contact.html" class="footer-link">Contact Us</a>
+          <a href="about.html" class="footer-link">About Us</a>
+          <a href="how-it-works.html" class="footer-link">How It Works</a>
+          <a href="admin.html" class="footer-link" style="color:var(--silver);font-size:12px;">⚙️ Admin Panel</a>
+        </div>
+      </div>
+
+
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item"><span class="footer-contact-icon">📱</span><span>+91 92393 94022</span></div>
+        <div class="footer-contact-item"><span class="footer-contact-icon">📧</span><span>primeshoejerseyhub24@gmail.com
+          </span></div>
+        <div class="footer-contact-item"><span class="footer-contact-icon">📍</span><span>
+Kolkata, West Bengal, India
+          </span></div>
+        <div class="footer-contact-item"><span class="footer-contact-icon">⏰</span><span>Mon–Sat, 10am–8pm</span></div>
+        <div style="margin-top:14px;">
+          <a href="https://wa.me/919239394022" target="_blank" class="btn btn-green btn-sm" style="display:inline-flex;">💬 WhatsApp</a>
+        </div>
+        <div style="margin-top:14px;">
+          <a href="https://www.instagram.com/primeshoejerseyhub/" target="_blank" class="btn btn-pink btn-sm" style="display:inline-flex;">💬 Instagram</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Prime Shoe Jersey Hub · All rights reserved</div>
+
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/products.js"></script>
+<script type="module" src="assets/js/cart.js"></script>
+<script type="module" src="assets/js/app.js"></script>
+<script>
+function toggleFAQ(header) {
+  const item = header.parentElement;
+  const answer = header.nextElementSibling;
+  const isOpen = item.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-item.open').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.faq-answer').style.height = '0';
+  });
+  if (!isOpen) {
+    item.classList.add('open');
+    answer.style.height = answer.scrollHeight + 'px';
+  }
+}
+
+function submitContactForm() {
+  const name    = document.getElementById('c-name').value.trim();
+  const phone   = document.getElementById('c-phone').value.trim();
+  const subject = document.getElementById('c-subject').value;
+  const message = document.getElementById('c-message').value.trim();
+
+  if (!name) { showToast('Please enter your name', 'error'); return; }
+  if (!phone) { showToast('Please enter your phone number', 'error'); return; }
+  if (!subject) { showToast('Please select a subject', 'error'); return; }
+  if (!message || message.length < 10) { showToast('Please write a message (min 10 chars)', 'error'); return; }
+
+  // In real deployment, send to backend / email service here
+  // For now, offer WhatsApp redirect
+  const waMsg = encodeURIComponent(`Hi Prime Shoe Jersey Hub!\n\nName: ${name}\nPhone: ${phone}\nSubject: ${subject}\n\nMessage: ${message}`);
+  const waLink = `https://wa.me/919239394022?text=${waMsg}`;
+
+  document.getElementById('contact-form').style.display = 'none';
+  document.getElementById('contact-success').classList.add('visible');
+  document.getElementById('contact-success').querySelector('a').href = waLink;
+  showToast('Message sent! We\'ll reply soon ✓');
+}
+</script>
+</body>
+</html>

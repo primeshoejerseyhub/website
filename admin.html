@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel — Prime Shoe Jersey Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/style.css"/>
+  <style>
+    body { overflow-x: hidden; }
+    .admin-nav-section { font-family:var(--font-cond); font-size:9px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:var(--silver); padding:0 12px; margin:20px 0 6px; }
+    .admin-nav-section:first-child { margin-top: 0; }
+    .admin-page-header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px; }
+    .admin-page-title { font-family:var(--font-display); font-size:2.2rem; letter-spacing:0.03em; line-height:1; }
+    .action-btns { display:flex; gap:6px; }
+    .action-btn {
+      width:30px; height:30px; border-radius:var(--radius-sm);
+      background:var(--dark-3); border:1px solid var(--border-solid);
+      color:var(--silver); display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:13px; transition:all 0.2s;
+    }
+    .action-btn:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-tint); }
+    .action-btn.del:hover { border-color:var(--red); color:var(--red); background:rgba(248,81,73,0.08); }
+
+    /* Stat cards */
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+    .stat-card {
+      background:var(--dark-2); border:1px solid var(--border-solid); border-radius:var(--radius-lg); padding:20px;
+      position:relative; overflow:hidden; transition:border-color 0.2s;
+    }
+    .stat-card:hover { border-color:rgba(56,189,248,0.3); }
+    .stat-card::after { content:''; position:absolute; top:0; right:0; width:50px; height:50px; background:var(--blue); opacity:0.04; border-radius:0 0 0 100%; }
+    .stat-icon { font-size:1.4rem; margin-bottom:10px; }
+    .stat-val { font-family:var(--font-display); font-size:2.2rem; color:var(--blue); line-height:1; margin-bottom:4px; }
+    .stat-label { font-family:var(--font-cond); font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--silver); }
+
+    /* Mini bar chart */
+    .mini-chart { display:flex; align-items:flex-end; gap:3px; height:36px; margin-top:10px; }
+    .mini-bar { flex:1; background:rgba(56,189,248,0.2); border-radius:2px 2px 0 0; min-height:4px; transition:background 0.2s; cursor:pointer; }
+    .mini-bar:hover,.mini-bar.hi { background:var(--blue); }
+
+    /* Table toolbar */
+    .table-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border-solid); flex-wrap:wrap; gap:10px; }
+    .table-toolbar-title { font-family:var(--font-cond); font-size:12px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; }
+    .admin-search-input {
+      background:var(--dark-3); border:1px solid var(--border-solid); border-radius:var(--radius-sm);
+      color:var(--white); padding:8px 12px 8px 34px; font-size:13px; width:220px; transition:all 0.2s;
+    }
+    .admin-search-input:focus { outline:none; border-color:var(--blue); width:260px; }
+    .admin-search-wrap { position:relative; }
+    .admin-search-wrap::before { content:'🔍'; position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; pointer-events:none; }
+    .admin-filter-select {
+      background:var(--dark-3); border:1px solid var(--border-solid); border-radius:var(--radius-sm);
+      color:var(--white); padding:8px 12px; font-size:12px; font-family:var(--font-cond); font-weight:700; letter-spacing:0.05em; cursor:pointer;
+    }
+    .admin-filter-select:focus { outline:none; border-color:var(--blue); }
+
+    /* Products grid */
+    .products-admin-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:14px; }
+    .prod-admin-card {
+      background:var(--dark-2); border:1px solid var(--border-solid); border-radius:var(--radius-lg);
+      overflow:hidden; transition:border-color 0.2s, transform 0.2s;
+    }
+    .prod-admin-card:hover { border-color:rgba(56,189,248,0.35); transform:translateY(-2px); }
+    .prod-admin-img { aspect-ratio:1; width:100%; object-fit:cover; background:var(--dark-3); }
+    .prod-admin-body { padding:12px; }
+    .prod-admin-cat { font-family:var(--font-cond); font-size:9px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--blue); margin-bottom:3px; }
+    .prod-admin-name { font-family:var(--font-cond); font-weight:700; font-size:13px; line-height:1.25; margin-bottom:6px; }
+    .in-stock { color:var(--green); } .low-stock { color:var(--orange); } .no-stock { color:var(--red); }
+
+    /* Form grid */
+    .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .fg-full { grid-column:span 2; }
+
+    /* Live preview */
+    #product-preview-card { background:var(--dark-3); border:1px solid var(--border-solid); border-radius:var(--radius-lg); overflow:hidden; max-width:220px; }
+    #product-preview-card img { width:100%; aspect-ratio:1; object-fit:cover; }
+
+    /* Order modal */
+    .od-row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-solid); font-size:13px; }
+    .od-row:last-child { border-bottom:none; }
+    .od-label { color:var(--silver); font-family:var(--font-cond); font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; }
+    .od-val { font-weight:600; text-align:right; max-width:60%; }
+
+    /* Step timeline (modal) */
+    .mini-timeline { display:flex; align-items:center; gap:0; margin:16px 0; }
+    .mt-step { flex:1; text-align:center; position:relative; }
+    .mt-step:not(:last-child)::after { content:''; position:absolute; top:13px; left:50%; width:100%; height:1.5px; background:var(--border-solid); }
+    .mt-step.done:not(:last-child)::after { background:var(--blue); }
+    .mt-dot { width:26px; height:26px; border-radius:50%; background:var(--dark-3); border:1.5px solid var(--border-solid); margin:0 auto 6px; display:flex; align-items:center; justify-content:center; font-size:11px; position:relative; z-index:1; }
+    .mt-step.done .mt-dot { background:var(--blue); border-color:var(--blue); color:var(--dark); font-weight:900; font-size:10px; }
+    .mt-step.active .mt-dot { border-color:var(--blue); color:var(--blue); box-shadow:0 0 0 3px var(--blue-tint); }
+    .mt-label { font-family:var(--font-cond); font-size:9px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--silver); }
+    .mt-step.done .mt-label,.mt-step.active .mt-label { color:var(--blue); }
+
+    /* Empty state */
+    .empty-state { text-align:center; padding:60px 20px; color:var(--silver); }
+    .empty-icon { font-size:3rem; margin-bottom:12px; }
+
+    @media(max-width:1024px) { .stats-grid { grid-template-columns:1fr 1fr; } }
+    @media(max-width:600px) { .stats-grid { grid-template-columns:1fr; } .form-grid-2 { grid-template-columns:1fr; } .fg-full { grid-column:span 1; } }
+
+    /* LOGIN SCREEN */
+    #admin-login-screen {
+      position:fixed;inset:0;z-index:9999;background:var(--dark);
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    }
+    #login-box {
+      background:var(--dark-2);border:1px solid var(--border-solid);
+      border-radius:var(--radius-xl);padding:40px 36px;
+      width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,0.5);
+    }
+    .login-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+    .login-logo-text{font-family:var(--font-display);font-size:1.5rem;color:var(--blue);line-height:1;}
+    .login-logo-sub{font-family:var(--font-cond);font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--silver);}
+    #login-box h2{font-family:var(--font-display);font-size:1.8rem;letter-spacing:0.03em;margin-bottom:6px;}
+    .login-sub{font-family:var(--font-cond);font-size:12px;font-weight:600;letter-spacing:0.06em;color:var(--silver);margin-bottom:28px;}
+    .login-field{margin-bottom:16px;}
+    .login-label{display:block;font-family:var(--font-cond);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--silver);margin-bottom:7px;}
+    .login-input{width:100%;background:var(--dark-3);border:1px solid var(--border-solid);border-radius:var(--radius);color:var(--white);padding:13px 16px;font-family:var(--font-body);font-size:14px;transition:border-color 0.2s,box-shadow 0.2s;box-sizing:border-box;}
+    .login-input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-tint);}
+    #login-error{display:none;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.25);border-radius:var(--radius-sm);color:var(--red);padding:10px 14px;font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.06em;margin-top:12px;}
+    @keyframes loginShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+    /* MOBILE SIDEBAR */
+    #admin-hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;background:var(--dark-3);border:1px solid var(--border-solid);border-radius:var(--radius-sm);cursor:pointer;padding:8px;transition:border-color 0.2s;}
+    #admin-hamburger span{display:block;height:2px;background:var(--silver);border-radius:2px;transition:all 0.3s;}
+    #admin-hamburger.active span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+    #admin-hamburger.active span:nth-child(2){opacity:0;transform:scaleX(0);}
+    #admin-hamburger.active span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+    #admin-hamburger:hover{border-color:var(--blue);}
+    #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:199;opacity:0;transition:opacity 0.3s;}
+    #sidebar-overlay.visible{display:block;opacity:1;}
+    .admin-logout-btn{font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--silver);background:none;border:none;cursor:pointer;transition:color 0.2s;padding:0;}
+    .admin-logout-btn:hover{color:var(--red);}
+    @keyframes adminSpin{to{transform:rotate(360deg)}}
+    .admin-spinner{width:32px;height:32px;border:3px solid var(--border-solid);border-top-color:var(--blue);border-radius:50%;animation:adminSpin 0.8s linear infinite;}
+
+    /* MOBILE RESPONSIVE */
+    @media(max-width:900px){
+      #admin-hamburger{display:flex;}
+      .admin-sidebar{display:block!important;position:fixed!important;left:0;top:0;bottom:0;z-index:200;transform:translateX(-110%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);width:260px!important;padding-top:60px!important;box-shadow:4px 0 24px rgba(0,0,0,0.4);overflow-y:auto;}
+      .admin-sidebar.open{transform:translateX(0);}
+      .admin-shell{grid-template-columns:1fr!important;}
+      .admin-main{padding:16px!important;}
+      .admin-topbar{padding:0 16px!important;}
+      .form-grid-2{grid-template-columns:1fr!important;}
+      .fg-full{grid-column:span 1!important;}
+      .btn{width:100%;justify-content:center;}
+      .admin-page-header{flex-direction:column;align-items:flex-start;}
+      .stats-grid{grid-template-columns:1fr 1fr!important;gap:10px;}
+      .stat-card{padding:14px;}
+      .stat-val{font-size:1.6rem;}
+      .products-admin-grid{grid-template-columns:1fr 1fr!important;}
+      div[style*="overflow-x:auto"]{-webkit-overflow-scrolling:touch;}
+      #product-preview-card{display:none;}
+      div[style*="grid-template-columns:1fr 280px"]{grid-template-columns:1fr!important;}
+    }
+    @media(max-width:480px){
+      .stats-grid{grid-template-columns:1fr!important;}
+      .products-admin-grid{grid-template-columns:1fr!important;}
+      #login-box{padding:28px 20px;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================
+     ADMIN LOGIN SCREEN
+============================================ -->
+<div id="admin-login-screen" style="display:flex;">
+  <div id="login-box">
+    <div class="login-logo">
+      <img src="assets/images/logo.png" alt="Logo" style="width:40px;height:40px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none'"/>
+      <div>
+        <div class="login-logo-text">PSJH</div>
+        <div class="login-logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <h2>ADMIN LOGIN</h2>
+    <p class="login-sub">Enter your credentials to continue</p>
+    <div class="login-field">
+      <label class="login-label" for="login-username">Username</label>
+      <input class="login-input" type="text" id="login-username" placeholder="admin" autocomplete="username"/>
+    </div>
+    <div class="login-field">
+      <label class="login-label" for="login-password">Password</label>
+      <input class="login-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-blue login-btn" onclick="adminLogin()">🔐 Sign In</button>
+    <div id="login-error">Invalid username or password. Please try again.</div>
+  </div>
+</div>
+
+<!-- ============================================
+     ADMIN APP (hidden until logged in)
+============================================ -->
+<div id="admin-app" style="display:none;flex-direction:column;min-height:100vh;">
+
+<!-- Overlay for mobile sidebar -->
+<div id="sidebar-overlay"></div>
+
+<!-- Topbar -->
+<div class="admin-topbar">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <img src="assets/images/logo.png" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'"/>
+      <div><span style="font-family:var(--font-display);font-size:1rem;color:var(--blue);display:block;line-height:1;">PSJH</span><span style="font-family:var(--font-cond);font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--silver);">Admin Panel</span></div>
+    </a>
+    <span style="background:var(--blue-tint);border:1px solid rgba(56,189,248,0.3);color:var(--blue);font-family:var(--font-cond);font-weight:700;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 10px;border-radius:100px;">Live</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <a href="shop.html" style="font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--silver);">View Store →</a>
+    <button class="admin-logout-btn" onclick="adminLogout()">Logout</button>
+    <button id="admin-hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</div>
+
+<div class="admin-shell">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <div class="admin-nav-section">Main</div>
+    <button class="admin-nav-item active" onclick="showSection('dashboard',this)"><span>📊</span> Dashboard</button>
+    <button class="admin-nav-item" onclick="showSection('orders',this)"><span>📦</span> Orders <span class="admin-nav-badge" id="orders-badge" style="margin-left:auto;background:var(--blue);color:var(--dark);font-family:var(--font-cond);font-size:9px;font-weight:900;padding:2px 6px;border-radius:100px;min-width:18px;text-align:center;display:inline-block;">0</span></button>
+    <div class="admin-nav-section">Catalogue</div>
+    <button class="admin-nav-item" onclick="showSection('products',this)"><span>👕</span> Products</button>
+    <button class="admin-nav-item" onclick="showSection('add-product',this)"><span>➕</span> Add Product</button>
+    <button class="admin-nav-item" onclick="showSection('reviews',this)"><span>💬</span> Reviews</button>
+    <div class="admin-nav-section">Tools</div>
+    <a href="tracking.html" class="admin-nav-item" style="display:flex;"><span>📍</span> Order Tracking</a>
+    <a href="shop.html" class="admin-nav-item" style="display:flex;"><span>🛒</span> Live Store</a>
+    <div class="admin-nav-section" style="margin-top:auto;padding-top:16px;"></div>
+    <button class="admin-nav-item" onclick="adminLogout()" style="color:var(--red);"><span>🚪</span> Logout</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+
+    <!-- ===== DASHBOARD ===== -->
+    <section class="admin-section active" id="section-dashboard">
+      <div class="admin-page-header">
+        <div><div class="section-label" style="margin-bottom:8px;">Overview</div><div class="admin-page-title">DASHBOARD</div></div>
+        <span style="font-family:var(--font-cond);font-size:12px;color:var(--silver);" id="dash-date"></span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-val" id="d-orders">0</div><div class="stat-label">Total Orders</div><div class="mini-chart" id="d-chart-orders"></div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="d-revenue">₹0</div><div class="stat-label">Total Revenue</div><div class="mini-chart" id="d-chart-rev"></div></div>
+        <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val" id="d-pending">0</div><div class="stat-label">Pending Payment</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val" id="d-delivered">0</div><div class="stat-label">Delivered</div></div>
+      </div>
+      <div class="admin-table-wrap">
+        <div class="table-toolbar"><span class="table-toolbar-title">Recent Orders</span><button class="btn btn-ghost btn-sm" onclick="showSection('orders',document.querySelectorAll('.admin-nav-item')[1])">View All →</button></div>
+        <div id="dash-recent"></div>
+      </div>
+    </section>
+
+    <!-- ===== ORDERS ===== -->
+    <section class="admin-section" id="section-orders">
+      <div class="admin-page-header">
+        <div><div class="section-label" style="margin-bottom:8px;">Manage</div><div class="admin-page-title">ALL ORDERS</div></div>
+        <button class="btn btn-danger btn-sm" onclick="clearAllOrders()">🗑 Clear All</button>
+      </div>
+      <div class="admin-table-wrap">
+        <div class="table-toolbar">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <div class="admin-search-wrap">
+              <input class="admin-search-input" type="text" id="order-search" placeholder="Search ID, name, phone..." oninput="renderOrders()"/>
+            </div>
+            <select class="admin-filter-select" id="order-status-filter" onchange="renderOrders()">
+              <option value="all">All Status</option>
+              <option value="pending">Pending Payment</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="packed">Packed</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <span id="orders-count" style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--silver);"></span>
+        </div>
+        <div id="orders-table-container"></div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTS ===== -->
+    <section class="admin-section" id="section-products">
+      <div class="admin-page-header">
+        <div><div class="section-label" style="margin-bottom:8px;">Catalogue</div><div class="admin-page-title">ALL PRODUCTS</div></div>
+        <button class="btn btn-blue" onclick="showSection('add-product',document.querySelectorAll('.admin-nav-item')[3])">+ Add Product</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <div class="admin-search-wrap" style="flex:1;min-width:200px;">
+          <input class="admin-search-input" type="text" id="prod-search" placeholder="Search products..." oninput="renderAdminProducts()" style="width:100%;"/>
+        </div>
+        <select class="admin-filter-select" id="prod-cat-filter" onchange="renderAdminProducts()">
+          <option value="all">All Categories</option>
+          <option value="jersey">Jerseys</option>
+          <option value="shoes">Shoes / Studs</option>
+          <option value="accessories">Accessories</option>
+        </select>
+      </div>
+      <div class="products-admin-grid" id="admin-products-grid"></div>
+    </section>
+
+    <!-- ===== ADD PRODUCT ===== -->
+    <section class="admin-section" id="section-add-product">
+      <div class="admin-page-header">
+        <div><div class="section-label" id="pf-section-label" style="margin-bottom:8px;">New Product</div><div class="admin-page-title" id="pf-section-title">ADD PRODUCT</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="resetProductForm()">✕ Clear</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start;">
+        <div style="background:var(--dark-2);border:1px solid var(--border-solid);border-radius:var(--radius-lg);padding:28px;">
+          <div class="form-grid-2">
+            <div class="fg-full"><label class="form-label">Product Name *</label><input class="form-input" type="text" id="pf-name" placeholder="e.g. Real Madrid Home Kit 2025" oninput="updatePreview()"/></div>
+            <div><label class="form-label">Category *</label><select class="form-input" id="pf-cat" onchange="updatePreview()"><option value="">Select</option><option value="jersey">Jersey</option><option value="shoes">Shoes / Studs</option><option value="accessories">Accessories</option></select></div>
+            <div><label class="form-label">Brand *</label><select class="form-input" id="pf-brand" onchange="updatePreview()"><option value="">Select</option><option value="Nike">Nike</option><option value="Adidas">Adidas</option><option value="Mizuno">Mizuno</option><option value="Jordan">Jordan</option><option value="Other">Other</option></select></div>
+            <div><label class="form-label">Sale Price (₹) *</label><input class="form-input" type="number" id="pf-price" placeholder="1299" oninput="updatePreview()"/></div>
+            <div><label class="form-label">Original Price (₹) *</label><input class="form-input" type="number" id="pf-original" placeholder="1799" oninput="updatePreview()"/></div>
+            <div><label class="form-label">Stock Count</label><input class="form-input" type="number" id="pf-stock" placeholder="10"/></div>
+            <div><label class="form-label">Badge</label><select class="form-input" id="pf-badge"><option value="">None</option><option value="bestseller">Best Seller</option><option value="new">New Arrival</option><option value="sale">Sale</option></select></div>
+            <div><label class="form-label">Featured on Homepage?</label><select class="form-input" id="pf-featured"><option value="false">No</option><option value="true">Yes</option></select></div>
+            <div class="fg-full">
+              <label class="form-label">Product Images * (upload to Cloudinary)</label>
+              <input type="file" id="pf-img-files" accept="image/*" multiple
+                style="font-size:12px;color:var(--white);background:var(--dark-3);border:1px solid var(--border-solid);border-radius:var(--radius-sm);padding:8px;width:100%;cursor:pointer;box-sizing:border-box;"
+                onchange="handleImageFileSelect(this)"/>
+              <div id="pf-img-preview-strip" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;min-height:20px;"></div>
+              <div id="pf-img-upload-status" style="font-size:11px;color:var(--silver);margin-top:4px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;"></div>
+              <div style="margin-top:8px;">
+                <label class="form-label" style="font-size:10px;color:var(--silver);">Or paste a direct image URL (fallback)</label>
+                <input class="form-input" type="url" id="pf-img" placeholder="https://..." oninput="updatePreview()" style="margin-top:4px;"/>
+              </div>
+            </div>
+            <div class="fg-full"><label class="form-label">Sizes (comma separated)</label><input class="form-input" type="text" id="pf-sizes" placeholder="S, M, L, XL, XXL"/></div>
+            <div class="fg-full"><label class="form-label">Description</label><textarea class="form-input" id="pf-desc" rows="3" placeholder="Product description..."></textarea></div>
+            <div class="fg-full" style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-blue" style="padding:13px 28px;" onclick="saveProduct()"><span id="pf-save-text">💾 Save Product</span></button>
+              <button class="btn btn-ghost" style="padding:13px 20px;" onclick="resetProductForm()">Cancel</button>
+            </div>
+          </div>
+        </div>
+        <!-- Live Preview -->
+        <div>
+          <div style="font-family:var(--font-cond);font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--silver);margin-bottom:12px;">Live Preview</div>
+          <div id="product-preview-card">
+            <div style="aspect-ratio:1;background:var(--dark-4);display:flex;align-items:center;justify-content:center;color:var(--silver);font-size:2rem;">🖼️</div>
+            <div style="padding:12px;"><div style="font-family:var(--font-cond);font-size:11px;color:var(--silver);">Fill form to preview</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== REVIEWS ===== -->
+    <section class="admin-section" id="section-reviews">
+      <div class="admin-page-header">
+        <div>
+          <div class="section-label" style="margin-bottom:8px;">Moderation</div>
+          <div class="admin-page-title">REVIEWS</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="renderReviewsSection()">↻ Refresh</button>
+      </div>
+      <div id="reviews-container">
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <div style="font-family:var(--font-cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Loading reviews...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="order-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-order-title">Order Details</div>
+      <button class="modal-close" onclick="closeModal('order-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;">
+        <div style="font-family:var(--font-cond);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--silver);margin-bottom:10px;">Progress</div>
+        <div class="mini-timeline" id="modal-timeline"></div>
+      </div>
+      <div style="background:var(--dark-3);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+        <div id="modal-order-details"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+        <select class="admin-filter-select" id="modal-status-select" style="flex:1;">
+          <option value="pending">Pending Payment</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="packed">Packed</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <button class="btn btn-blue" onclick="updateOrderStatus()" style="padding:10px 20px;">Update</button>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteOrder()">🗑 Delete Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin JS — Firestore + Cloudinary -->
+<script type="module" src="assets/js/admin.js"></script>
+</div><!-- end #admin-app -->
+</body>
+</html>
