@@ -90,6 +90,7 @@
       <nav class="nav-links">
         <a href="index.html" class="nav-link">Home</a>
         <a href="shop.html" class="nav-link">Shop</a>
+        <a href="tracking.html" class="nav-link">Track</a>
         <a href="about.html" class="nav-link">About</a>
         <a href="contact.html" class="nav-link">Contact</a>
       </nav>
@@ -114,6 +115,7 @@
   <div class="mobile-nav-links">
     <a href="index.html" class="mobile-nav-link">🏠 Home</a>
     <a href="shop.html" class="mobile-nav-link">🛍️ Shop</a>
+    <a href="tracking.html" class="mobile-nav-link">📦track your order</a>
     <a href="about.html" class="mobile-nav-link">ℹ️ About</a>
     <a href="contact.html" class="mobile-nav-link">📞 Contact</a>
   </div>
@@ -169,10 +171,10 @@
       <div class="filter-section">
         <div class="filter-title">Category</div>
         <div class="filter-options">
-          <label class="filter-option"><input type="radio" name="cat" value="all" checked onchange="applyFromSidebar()"><span class="filter-option-label">All</span><span class="filter-option-count">14</span></label>
-          <label class="filter-option"><input type="radio" name="cat" value="jersey" onchange="applyFromSidebar()"><span class="filter-option-label">Jerseys</span><span class="filter-option-count">6</span></label>
-          <label class="filter-option"><input type="radio" name="cat" value="shoes" onchange="applyFromSidebar()"><span class="filter-option-label">Studs & Shoes</span><span class="filter-option-count">5</span></label>
-          <label class="filter-option"><input type="radio" name="cat" value="accessories" onchange="applyFromSidebar()"><span class="filter-option-label">Accessories</span><span class="filter-option-count">3</span></label>
+          <label class="filter-option"><input type="radio" name="cat" value="all" checked onchange="applyFromSidebar()"><span class="filter-option-label">All</span><span class="filter-option-count" id="fc-all">—</span></label>
+          <label class="filter-option"><input type="radio" name="cat" value="jersey" onchange="applyFromSidebar()"><span class="filter-option-label">Jerseys</span><span class="filter-option-count" id="fc-jersey">—</span></label>
+          <label class="filter-option"><input type="radio" name="cat" value="shoes" onchange="applyFromSidebar()"><span class="filter-option-label">Studs & Shoes</span><span class="filter-option-count" id="fc-shoes">—</span></label>
+          <label class="filter-option"><input type="radio" name="cat" value="accessories" onchange="applyFromSidebar()"><span class="filter-option-label">Accessories</span><span class="filter-option-count" id="fc-accessories">—</span></label>
         </div>
       </div>
       <div class="filter-section">
@@ -241,8 +243,8 @@
     <div>  
       <div class="footer-col-title">Useful links</div>
         <div class="footer-links">
-          <a href="privacy.html" class="footer-link">Privacy Policy</a>
-          <a href="refund-policy.html" class="footer-link">Refund Policy</a>
+          <a href="tracking.html" class="footer-link">Track Your Order</a><a href="privacy.html" class="footer-link">Privacy Policy</a>
+          <a href="refund-policy.html" class="footer-link">Refund/Return Policy</a>
           <a href="terms.html" class="footer-link">Terms of Service</a>
           <a href="shipping.html" class="footer-link">Shipping Policy</a>
 
@@ -256,7 +258,7 @@
           <a href="contact.html" class="footer-link">Contact Us</a>
           <a href="about.html" class="footer-link">About Us</a>
           <a href="how-it-works.html" class="footer-link">How It Works</a>
-          <a href="admin.html" class="footer-link" style="color:var(--silver);font-size:12px;">⚙️ Admin Panel</a>
+          
         </div>
       </div>
 
@@ -279,7 +281,7 @@ Kolkata, West Bengal, India
       </div>
     </div>
     <div class="footer-bottom">
-      <div class="footer-copy">© 2025 Prime Shoe Jersey Hub · All rights reserved</div>
+      <div class="footer-copy">© 2026 Prime Shoe Jersey Hub · All rights reserved</div>
 
     </div>
   </div>
@@ -309,7 +311,17 @@ function getFiltered() {
   return r;
 }
 
+function updateFilterCounts() {
+  const all = PRODUCTS.length;
+  const jersey = PRODUCTS.filter(p => p.category === 'jersey').length;
+  const shoes = PRODUCTS.filter(p => p.category === 'shoes').length;
+  const accessories = PRODUCTS.filter(p => p.category === 'accessories').length;
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  s('fc-all', all); s('fc-jersey', jersey); s('fc-shoes', shoes); s('fc-accessories', accessories);
+}
+
 function renderShop() {
+  updateFilterCounts();
   const filtered = getFiltered();
   const grid = document.getElementById('shop-products-grid');
   const noRes = document.getElementById('no-results');

@@ -230,6 +230,7 @@
     <button class="admin-nav-item" onclick="showSection('add-product',this)"><span>➕</span> Add Product</button>
     <button class="admin-nav-item" onclick="showSection('reviews',this)"><span>💬</span> Reviews</button>
     <div class="admin-nav-section">Tools</div>
+    <button class="admin-nav-item" onclick="showSection('enquiries',this)"><span>📩</span> Enquiries <span class="admin-nav-badge" id="enquiries-badge" style="margin-left:auto;background:var(--orange);color:var(--dark);font-family:var(--font-cond);font-size:9px;font-weight:900;padding:2px 6px;border-radius:100px;min-width:18px;text-align:center;display:none;">0</span></button>
     <a href="tracking.html" class="admin-nav-item" style="display:flex;"><span>📍</span> Order Tracking</a>
     <a href="shop.html" class="admin-nav-item" style="display:flex;"><span>🛒</span> Live Store</a>
     <div class="admin-nav-section" style="margin-top:auto;padding-top:16px;"></div>
@@ -314,7 +315,7 @@
       <div style="display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start;">
         <div style="background:var(--dark-2);border:1px solid var(--border-solid);border-radius:var(--radius-lg);padding:28px;">
           <div class="form-grid-2">
-            <div class="fg-full"><label class="form-label">Product Name *</label><input class="form-input" type="text" id="pf-name" placeholder="e.g. Real Madrid Home Kit 2025" oninput="updatePreview()"/></div>
+            <div class="fg-full"><label class="form-label">Product Name *</label><input class="form-input" type="text" id="pf-name" placeholder="e.g. Real Madrid Home Kit 2026" oninput="updatePreview()"/></div>
             <div><label class="form-label">Category *</label><select class="form-input" id="pf-cat" onchange="updatePreview()"><option value="">Select</option><option value="jersey">Jersey</option><option value="shoes">Shoes / Studs</option><option value="accessories">Accessories</option></select></div>
             <div><label class="form-label">Brand *</label><select class="form-input" id="pf-brand" onchange="updatePreview()"><option value="">Select</option><option value="Nike">Nike</option><option value="Adidas">Adidas</option><option value="Mizuno">Mizuno</option><option value="Jordan">Jordan</option><option value="Other">Other</option></select></div>
             <div><label class="form-label">Sale Price (₹) *</label><input class="form-input" type="number" id="pf-price" placeholder="1299" oninput="updatePreview()"/></div>
@@ -369,6 +370,23 @@
         </div>
       </div>
     </section>
+
+    <!-- ===== ENQUIRIES ===== -->
+<section class="admin-section" id="section-enquiries">
+  <div class="admin-page-header">
+    <div>
+      <div class="section-label" style="margin-bottom:8px;">Customer Messages</div>
+      <div class="admin-page-title">ENQUIRIES</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="renderEnquiriesSection()">↻ Refresh</button>
+  </div>
+  <div id="enquiries-container">
+    <div class="empty-state">
+      <div class="empty-icon">📩</div>
+      <div style="font-family:var(--font-cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Loading enquiries...</div>
+    </div>
+  </div>
+</section>
 
   </main>
 </div>
