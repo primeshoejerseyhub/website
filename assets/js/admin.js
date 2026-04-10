@@ -1,15 +1,3 @@
-// ============================================
-// PRIME SHOE JERSEY HUB — Admin Panel JS v3.0
-// ============================================
-// Fixes:
-//   ✅ Mobile sidebar (hamburger + overlay + z-index fix)
-//   ✅ Reviews: load from Firestore subcollection
-//   ✅ Delete review from Firestore
-//   ✅ All async/await errors handled
-//   ✅ Loading + empty states
-//   ✅ Product form validated
-//   ✅ Image upload (Cloudinary)
-
 import { db } from "./firebase.js";
 import { uploadMultipleToCloudinary } from "./cloudinary.js";
 import {
@@ -180,6 +168,7 @@ window.showSection = function (name, btn) {
   else if (name === "orders") renderOrders();
   else if (name === "products") renderAdminProducts();
   else if (name === "reviews") renderReviewsSection();
+  else if (name === "enquiries") renderEnquiriesSection();
   // add-product section doesn't need a render call
 };
 
@@ -422,9 +411,14 @@ window.renderAdminProducts = function () {
     const disc = p.originalPrice ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : 0;
     const stockCls = p.stock === 0 ? "no-stock" : p.stock <= 5 ? "low-stock" : "in-stock";
     const stockText = p.stock === 0 ? "Out of Stock" : p.stock <= 5 ? `Only ${p.stock} left` : `In Stock (${p.stock})`;
-    const imgSrc = (p.images || [])[0] || "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=60";
+    const imgSrc = (p.images && p.images.length > 0 && p.images[0])
+      ? p.images[0]
+      : (p.image || "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=60");
+    const fallbackImg = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=60";
     return `<div class="prod-admin-card">
-      <img src="${imgSrc}" alt="${p.name}" class="prod-admin-img" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=60'"/>
+      <img src="${imgSrc}" alt="${p.name}" class="prod-admin-img" loading="lazy"
+        onerror="this.onerror=null;this.src='${fallbackImg}'"
+        onload="this.style.opacity='1'" style="opacity:0;transition:opacity 0.3s;"/>
       <div class="prod-admin-body">
         <div class="prod-admin-cat">${p.brand || "—"} · ${p.category || "—"}</div>
         <div class="prod-admin-name">${p.name || "Unnamed"}</div>
@@ -829,13 +823,124 @@ function initLazyImages() {
 // ============================================
 async function initAdminApp() {
   console.log("[Admin] Initializing...");
-  await Promise.all([loadProducts(), loadOrders()]);
+  await Promise.all([loadProducts(), loadOrders(), loadEnquiries()]);
   renderDashboard();
   initModalBackdropClose();
   initMobileSidebar();
   initLazyImages();
   console.log("[Admin] Ready ✓");
 }
+
+// ============================================
+// SECTION 16: ENQUIRIES
+// ============================================
+import {
+  where,
+  writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+let allEnquiries = [];
+
+async function loadEnquiries() {
+  try {
+    const q = query(collection(db, "enquiries"), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    allEnquiries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Update badge
+    const unread = allEnquiries.filter(e => !e.read).length;
+    const badge = document.getElementById("enquiries-badge");
+    if (badge) {
+      if (unread > 0) { badge.textContent = unread; badge.style.display = "inline-block"; }
+      else badge.style.display = "none";
+    }
+    console.log("[Admin] Enquiries loaded:", allEnquiries.length);
+  } catch (err) {
+    console.error("[Admin] loadEnquiries error:", err.message);
+    showToast("Failed to load enquiries.", "error");
+  }
+}
+
+async function renderEnquiriesSection() {
+  const container = document.getElementById("enquiries-container");
+  if (!container) return;
+
+  container.innerHTML = `<div style="text-align:center;padding:48px 20px;">
+    <div class="admin-spinner" style="margin:0 auto 12px;"></div>
+    <p style="color:var(--silver);font-size:13px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Loading enquiries...</p>
+  </div>`;
+
+  await loadEnquiries();
+
+  if (!allEnquiries.length) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📩</div>
+      <div style="font-family:var(--font-cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">No enquiries yet</div>
+      <p style="color:var(--silver);font-size:13px;margin-top:8px;">Customer contact form messages will appear here.</p>
+    </div>`;
+    return;
+  }
+
+  const rows = allEnquiries.map(e => {
+    const dateStr = e.timestamp?.toDate
+      ? e.timestamp.toDate().toLocaleString("en-IN")
+      : "—";
+    const isUnread = !e.read;
+    return `<div id="enquiry-row-${e.id}" style="background:var(--dark-2);border:1px solid ${isUnread ? "rgba(56,189,248,0.3)" : "var(--border-solid)"};border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:12px;transition:opacity 0.3s,transform 0.3s;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-family:var(--font-cond);font-weight:700;font-size:15px;">${e.name}</span>
+            ${isUnread ? `<span style="background:var(--blue);color:var(--dark);font-family:var(--font-cond);font-size:9px;font-weight:900;padding:2px 8px;border-radius:100px;letter-spacing:0.08em;">NEW</span>` : ""}
+            <span style="font-size:11px;color:var(--silver);">${dateStr}</span>
+          </div>
+          <div style="font-size:12px;color:var(--silver);margin-bottom:6px;">
+            📱 ${e.phone || "—"} &nbsp;·&nbsp; 📧 ${e.email || "—"} &nbsp;·&nbsp; 📋 ${e.subject || "—"}
+          </div>
+          <div style="font-size:13px;color:rgba(240,246,252,0.8);line-height:1.6;background:var(--dark-3);padding:12px;border-radius:var(--radius-sm);">${e.message}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+          ${isUnread
+            ? `<button onclick="markEnquiryRead('${e.id}')" class="action-btn" title="Mark as Read" style="width:auto;padding:6px 10px;font-size:11px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.04em;gap:4px;display:flex;align-items:center;">✓ Read</button>`
+            : `<button class="action-btn" disabled style="width:auto;padding:6px 10px;font-size:11px;font-family:var(--font-cond);opacity:0.4;cursor:default;">✓ Read</button>`
+          }
+          <button onclick="deleteEnquiry('${e.id}')" class="action-btn del" title="Delete">🗑</button>
+          <a href="https://wa.me/91${e.phone?.replace(/\D/g,'')}?text=Hi+${encodeURIComponent(e.name)}%2C+thank+you+for+reaching+out!" target="_blank" class="action-btn" title="Reply on WhatsApp" style="width:auto;padding:6px 10px;font-size:11px;text-decoration:none;font-family:var(--font-cond);font-weight:700;display:flex;align-items:center;gap:4px;color:#25d366;border-color:rgba(37,211,102,0.3);">💬 WA</a>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = rows;
+}
+
+window.markEnquiryRead = async function(id) {
+  try {
+    await updateDoc(doc(db, "enquiries", id), { read: true });
+    const enquiry = allEnquiries.find(e => e.id === id);
+    if (enquiry) enquiry.read = true;
+    await renderEnquiriesSection();
+    showToast("Marked as read ✓");
+  } catch (err) {
+    console.error("[Admin] markEnquiryRead error:", err.message);
+    showToast("Failed to update.", "error");
+  }
+};
+
+window.deleteEnquiry = async function(id) {
+  if (!confirm("Delete this enquiry? This cannot be undone.")) return;
+  try {
+    await deleteDoc(doc(db, "enquiries", id));
+    allEnquiries = allEnquiries.filter(e => e.id !== id);
+    const row = document.getElementById(`enquiry-row-${id}`);
+    if (row) { row.style.opacity = "0"; row.style.transform = "translateX(20px)"; setTimeout(() => row.remove(), 320); }
+    showToast("Enquiry deleted.");
+  } catch (err) {
+    console.error("[Admin] deleteEnquiry error:", err.message);
+    showToast("Failed to delete enquiry.", "error");
+  }
+};
+
+window.renderEnquiriesSection = renderEnquiriesSection;
 
 document.addEventListener("DOMContentLoaded", () => {
   initLoginKeyHandler();

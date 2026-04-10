@@ -6,7 +6,7 @@ import { fetchAllProducts } from "./products.js";
 
 // ---- STORE CONFIG ----
 const STORE_CONFIG = {
-  upiId: "primeshoejerseyh@upi",
+  upiId: "8210647493@kotak811",
   whatsappNumber: "919239394022",
   storeName: "Prime Shoe Jersey Hub",
 };

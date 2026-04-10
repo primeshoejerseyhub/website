@@ -1,9 +1,7 @@
 // ============================================
-// PRIME SHOE JERSEY HUB — Checkout v3 (Firebase)
+// PRIME SHOE JERSEY HUB — Checkout v4 (Fixed Flow)
 // ============================================
-// Replaces localStorage-only order saving with Firestore.
-// Adds real Cloudinary screenshot upload.
-// Removes Cash on Delivery and Card payment entirely.
+// Flow: Address → Payment Instructions → Upload Screenshot → THEN Save Order → Success
 
 import { db } from "./firebase.js";
 import { uploadScreenshot } from "./cloudinary.js";
@@ -14,10 +12,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ---- CONFIG ----
-const UPI_ID = "primeshoejerseyh@upi";
+const UPI_ID = "8210647493@kotak811";
 const WA_NUMBER = "919239394022";
 
-// ---- HELPERS (these are already global from cart.js / products.js) ----
+// Pending order data stored before screenshot upload
+let _pendingOrderData = null;
+let _pendingOrderMeta = null;
+
 function fmt(n) {
   return "₹" + Number(n).toLocaleString("en-IN");
 }
@@ -65,94 +66,14 @@ function renderSummary() {
   safeSet("co-total", fmt(total));
 }
 
-// ---- INJECT SCREENSHOT UPLOAD FIELD ----
-// We inject the screenshot upload field into the success screen dynamically
-function injectScreenshotField() {
-  const upiBlock = document.querySelector(".upi-block");
-  if (!upiBlock || document.getElementById("screenshot-upload-block")) return;
-
-  upiBlock.insertAdjacentHTML("afterend", `
-    <div id="screenshot-upload-block" style="background:var(--dark-3);border:1px solid var(--border-solid);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px;">
-      <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;">
-        📸 Upload Payment Screenshot
-      </div>
-      <p style="font-size:12px;color:var(--silver);margin-bottom:12px;">
-        After paying via UPI, upload your payment screenshot here for faster order confirmation.
-      </p>
-      <input type="file" id="screenshot-file-input" accept="image/*"
-        style="font-size:12px;color:var(--white);background:var(--dark-4);border:1px solid var(--border-solid);border-radius:var(--radius-sm);padding:8px;width:100%;cursor:pointer;box-sizing:border-box;" />
-      <div id="screenshot-preview-wrap" style="margin-top:10px;display:none;">
-        <img id="screenshot-preview-img" src="" style="max-width:100%;max-height:200px;border-radius:var(--radius-sm);border:1px solid var(--border-solid);" />
-      </div>
-      <button id="screenshot-upload-btn" class="btn btn-blue btn-sm" style="margin-top:12px;width:100%;" onclick="uploadPaymentScreenshot()">
-        ☁️ Upload Screenshot
-      </button>
-      <div id="screenshot-status" style="font-size:11px;color:var(--silver);margin-top:8px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;"></div>
-    </div>
-  `);
-
-  // Preview selected file
-  document.getElementById("screenshot-file-input")?.addEventListener("change", function() {
-    const file = this.files[0];
-    if (!file) return;
-    const previewWrap = document.getElementById("screenshot-preview-wrap");
-    const previewImg = document.getElementById("screenshot-preview-img");
-    if (previewWrap && previewImg) {
-      previewImg.src = URL.createObjectURL(file);
-      previewWrap.style.display = "block";
-    }
-  });
-}
-
-// ---- UPLOAD SCREENSHOT ----
-window.uploadPaymentScreenshot = async function() {
-  const fileInput = document.getElementById("screenshot-file-input");
-  const statusEl = document.getElementById("screenshot-status");
-  const btn = document.getElementById("screenshot-upload-btn");
-
-  if (!fileInput?.files?.length) {
-    if (window.showToast) showToast("Please select a screenshot file first.", "error");
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = "⏳ Uploading...";
-  if (statusEl) statusEl.textContent = "Uploading to Cloudinary...";
-
-  try {
-    const url = await uploadScreenshot(fileInput.files[0]);
-    window._screenshotUrl = url;
-
-    if (statusEl) statusEl.textContent = "✓ Screenshot uploaded successfully!";
-    if (statusEl) statusEl.style.color = "var(--blue)";
-    btn.textContent = "✓ Uploaded";
-    btn.style.background = "var(--blue-tint)";
-    console.log("[Checkout] Screenshot uploaded:", url);
-
-    // Save screenshot URL to the order in Firestore
-    const orderId = window._lastFirestoreOrderId;
-    if (orderId) {
-      const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      await updateDoc(doc(db, "orders", orderId), { screenshot: url });
-      console.log("[Checkout] Screenshot saved to order:", orderId);
-      if (window.showToast) showToast("Screenshot saved to your order ✓");
-    }
-  } catch (err) {
-    console.error("[Checkout] Screenshot upload error:", err);
-    if (statusEl) statusEl.textContent = "Upload failed. Use WhatsApp to send screenshot.";
-    if (statusEl) statusEl.style.color = "var(--red)";
-    btn.disabled = false;
-    btn.textContent = "☁️ Try Again";
-  }
-};
-
-// ---- PLACE ORDER ----
+// ---- STEP 1→2: Show Payment Screen (DO NOT save order yet) ----
 window.placeOrder = async function() {
   const name    = document.getElementById("co-name")?.value.trim();
   const phone   = document.getElementById("co-phone")?.value.trim();
   const address = document.getElementById("co-address")?.value.trim();
   const city    = document.getElementById("co-city")?.value.trim();
   const pin     = document.getElementById("co-pin")?.value.trim();
+  const state   = document.getElementById("co-state")?.value.trim();
 
   const toast = window.showToast || function(){};
 
@@ -176,40 +97,31 @@ window.placeOrder = async function() {
   const total    = subtotal + shipping;
   const orderId  = generateOrderId();
 
-  const orderData = {
+  // Store pending order data — will be saved AFTER screenshot upload
+  _pendingOrderData = {
     orderId,
     name,
     phone,
-    address: `${address}, ${city} - ${pin}`,
+    address: `${address}, ${city}${state ? ", " + state : ""} - ${pin}`,
     items: items.map(i => ({ name: i.name, size: i.size, qty: i.qty, price: i.price })),
     amount: total,
-    screenshot: null,             // filled after screenshot upload
-    status: "Paid",               // user has paid via UPI
+    screenshot: null,
+    status: "Paid",
     createdAt: serverTimestamp()
   };
+  _pendingOrderMeta = { orderId, name, total };
 
-  try {
-    // Save order to Firestore
-    const ref = await addDoc(collection(db, "orders"), orderData);
-    window._lastFirestoreOrderId = ref.id; // store for screenshot update
-    console.log("[Checkout] Order saved to Firestore:", ref.id, orderId);
+  // Show payment instructions screen
+  showPaymentScreen({ orderId, name, total });
 
-    // Show success screen
-    showSuccessScreen({ orderId, name, total });
-
-    // Clear cart
-    if (window.cartClear) window.cartClear();
-
-  } catch (err) {
-    console.error("[Checkout] placeOrder Firestore error:", err);
-    // Fallback: still show success screen (order is "pending" locally)
-    showSuccessScreen({ orderId, name, total });
-    if (window.cartClear) window.cartClear();
-    toast("Order placed (offline). Share screenshot on WhatsApp.", "success");
+  // Re-enable button
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Place Order →`;
   }
 };
 
-function showSuccessScreen({ orderId, name, total }) {
+function showPaymentScreen({ orderId, name, total }) {
   const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const safeHref = (id, val) => { const el = document.getElementById(id); if (el) el.href = val; };
 
@@ -224,7 +136,6 @@ function showSuccessScreen({ orderId, name, total }) {
 
   safeHref("track-btn", `tracking.html?id=${orderId}`);
 
-  // WhatsApp message
   const waMsg = encodeURIComponent(
     `Hi, I placed an order on Prime Shoe Jersey Hub.\n\nOrder ID: ${orderId}\nName: ${name}\nAmount: ${fmt(total)}\n\nI am sending my payment screenshot.`
   );
@@ -233,21 +144,82 @@ function showSuccessScreen({ orderId, name, total }) {
   // Step indicators
   document.querySelectorAll(".csi-step").forEach(s => s.classList.remove("active"));
   document.getElementById("csi-1")?.classList.add("done");
-  document.getElementById("csi-2")?.classList.add("done");
-  document.getElementById("csi-3")?.classList.add("active");
+  document.getElementById("csi-2")?.classList.add("active");
 
   // Switch screens
   const formSection = document.getElementById("checkout-form-section");
-  const successScreen = document.getElementById("success-screen");
+  const paymentScreen = document.getElementById("payment-screen");
   if (formSection) formSection.style.display = "none";
-  if (successScreen) successScreen.classList.add("visible");
+  if (paymentScreen) paymentScreen.classList.add("visible");
 
-  // Inject screenshot upload field
-  injectScreenshotField();
-
-  // Save orderId to localStorage so tracking page can auto-fill it
   localStorage.setItem('psjh_last_order', orderId);
-  console.log('[Checkout] Order ID saved to localStorage:', orderId);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ---- STEP 3: Upload Screenshot & STEP 4: Save Order ----
+window.uploadAndConfirmOrder = async function() {
+  const fileInput = document.getElementById("screenshot-file-input");
+  const statusEl = document.getElementById("screenshot-status");
+  const btn = document.getElementById("screenshot-upload-btn");
+
+  if (!fileInput?.files?.length) {
+    if (window.showToast) showToast("Please select your payment screenshot first.", "error");
+    return;
+  }
+
+  if (!_pendingOrderData) {
+    if (window.showToast) showToast("Order data lost. Please refresh and try again.", "error");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Uploading...";
+  if (statusEl) { statusEl.textContent = "Uploading screenshot..."; statusEl.style.color = "var(--silver)"; }
+
+  try {
+    // Upload screenshot first
+    const screenshotUrl = await uploadScreenshot(fileInput.files[0]);
+    if (statusEl) statusEl.textContent = "✓ Screenshot uploaded. Saving order...";
+
+    // Now save order to Firestore WITH screenshot
+    _pendingOrderData.screenshot = screenshotUrl;
+    const ref = await addDoc(collection(db, "orders"), _pendingOrderData);
+    console.log("[Checkout] Order saved to Firestore:", ref.id, _pendingOrderData.orderId);
+
+    // Clear cart
+    if (window.cartClear) window.cartClear();
+
+    // Show final success screen
+    showSuccessScreen(_pendingOrderMeta);
+
+    if (window.showToast) showToast("Order Placed Successfully! ✓");
+
+  } catch (err) {
+    console.error("[Checkout] Upload/save error:", err);
+    if (statusEl) { statusEl.textContent = "Upload failed. Try again or use WhatsApp."; statusEl.style.color = "var(--red, #f87171)"; }
+    btn.disabled = false;
+    btn.textContent = "☁️ Try Again";
+  }
+};
+
+function showSuccessScreen({ orderId, name, total }) {
+  const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  safeSet("success-order-id", orderId);
+  safeSet("success-name", name);
+  safeSet("success-amount", fmt(total));
+
+  const trackBtn = document.getElementById("success-track-btn");
+  if (trackBtn) trackBtn.href = `tracking.html?id=${orderId}`;
+
+  // Step indicators
+  document.querySelectorAll(".csi-step").forEach(s => { s.classList.remove("active"); s.classList.add("done"); });
+  document.getElementById("csi-3")?.classList.remove("done");
+  document.getElementById("csi-3")?.classList.add("active");
+
+  const paymentScreen = document.getElementById("payment-screen");
+  const successScreen = document.getElementById("success-screen");
+  if (paymentScreen) paymentScreen.classList.remove("visible");
+  if (successScreen) successScreen.classList.add("visible");
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -259,12 +231,26 @@ window.copyUPI = function() {
     .catch(() => { if (window.showToast) showToast(UPI_ID, "success"); });
 };
 
-// ---- SPINNER KEYFRAME ----
+// Preview screenshot file
+document.addEventListener("DOMContentLoaded", () => {
+  renderSummary();
+
+  document.getElementById("screenshot-file-input")?.addEventListener("change", function() {
+    const file = this.files[0];
+    if (!file) return;
+    const previewWrap = document.getElementById("screenshot-preview-wrap");
+    const previewImg = document.getElementById("screenshot-preview-img");
+    if (previewWrap && previewImg) {
+      previewImg.src = URL.createObjectURL(file);
+      previewWrap.style.display = "block";
+    }
+    // Update button text
+    const btn = document.getElementById("screenshot-upload-btn");
+    if (btn) btn.textContent = "✅ Upload & Confirm Order";
+  });
+});
+
+// Spinner keyframe
 const spinStyle = document.createElement("style");
 spinStyle.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
 document.head.appendChild(spinStyle);
-
-// ---- INIT ----
-document.addEventListener("DOMContentLoaded", () => {
-  renderSummary();
-});
