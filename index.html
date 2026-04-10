@@ -63,7 +63,8 @@
 </head>
 <body>
 
-<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-item">🚚 Fast Delivery PAN India</span><span class="ticker-item">📦 2–5 Working Days</span><span class="ticker-item">✅ 5,000+ Orders Shipped</span><span class="ticker-item">📱 Pay via UPI</span></div></div>
+<!-- TICKER -->
+<div class="ticker-wrap"><div class="ticker-track"><span class="ticker-item">🚚 Fast Delivery PAN India</span><span class="ticker-item">📦 4–6 Working Days</span><span class="ticker-item">✅ 30,000+ Orders Shipped</span><span class="ticker-item">📱 Pay via UPI</span></div></div>
 
 <!-- NAVBAR -->
 <nav id="navbar">
@@ -93,6 +94,7 @@
       <nav class="nav-links">
         <a href="index.html" class="nav-link">Home</a>
         <a href="shop.html" class="nav-link">Shop</a>
+        <a href="tracking.html" class="nav-link">Track</a>
         <a href="about.html" class="nav-link">About</a>
         <a href="contact.html" class="nav-link">Contact</a>
       </nav>
@@ -146,21 +148,29 @@
     <div class="hero-content animate-fade-up">
       <div class="hero-eyebrow">
         <div class="hero-eyebrow-dot"></div>
-        <span class="hero-eyebrow-text">New Season · 2025 Drop</span>
+        <span class="hero-eyebrow-text">New Season · 2026 Drop</span>
       </div>
       <h1 class="hero-title">
         UPGRADE<br/>
         <span class="outline">YOUR</span><br/>
         GAME
       </h1>
-      <p class="hero-subtitle">Premium Jerseys, Studs & Football Gear — Authentic Quality, Delivered Fast Across India</p>
+      <p class="hero-subtitle">Premium Football Shoes,Jerseys & Gear — Authentic Quality, Delivered Fast Across India</p>
       <div class="hero-ctas">
         <a href="shop.html" class="btn btn-blue btn-lg">Shop Now →</a>
-        <a href="shop.html?cat=jersey" class="btn btn-outline btn-lg">View Jerseys</a>
+        <a href="shop.html?brand=adidas" class="btn btn-brand-hero" data-brand="adidas">
+          <img src="assets/images/adidas_logo3.png" alt="Adidas" onerror="this.style.display='none'"/> Adidas
+        </a>
+        <a href="shop.html?brand=nike" class="btn btn-brand-hero" data-brand="nike">
+          <img src="assets/images/nike.png" alt="Nike" onerror="this.style.display='none'"/> Nike
+        </a>
+        <a href="shop.html?brand=mizuno" class="btn btn-brand-hero" data-brand="mizuno">
+          <img src="assets/images/mizuno.png" alt="Mizuno" onerror="this.style.display='none'"/> Mizuno
+        </a>
       </div>
       <div class="hero-stats">
         <div class="hero-stat"><div class="hero-stat-val">50+</div><div class="hero-stat-label">Products</div></div>
-        <div class="hero-stat"><div class="hero-stat-val">5K+</div><div class="hero-stat-label">Orders Shipped</div></div>
+        <div class="hero-stat"><div class="hero-stat-val">30K+</div><div class="hero-stat-label">Orders Shipped</div></div>
         <div class="hero-stat"><div class="hero-stat-val">4.9★</div><div class="hero-stat-label">Avg Rating</div></div>
         <div class="hero-stat"><div class="hero-stat-val">UPI</div><div class="hero-stat-label">Easy Payment</div></div>
       </div>
@@ -173,10 +183,10 @@
 <div class="trust-bar">
   <div class="container">
     <div class="trust-grid">
-      <div class="trust-item reveal"><div class="trust-icon">🚀</div><div><div class="trust-title">Fast Delivery</div><div class="trust-desc">2–5 days PAN India</div></div></div>
+      <div class="trust-item reveal"><div class="trust-icon">🚀</div><div><div class="trust-title">Fast Delivery</div><div class="trust-desc">4–7 days PAN India</div></div></div>
       <div class="trust-item reveal"><div class="trust-icon">🛡️</div><div><div class="trust-title">100% Authentic</div><div class="trust-desc">Genuine gear only</div></div></div>
       <div class="trust-item reveal"><div class="trust-icon">📱</div><div><div class="trust-title">UPI Payment</div><div class="trust-desc">GPay · PhonePe · Paytm</div></div></div>
-      <div class="trust-item reveal"><div class="trust-icon">↩️</div><div><div class="trust-title">Easy Returns</div><div class="trust-desc">7-day policy</div></div></div>
+      <div class="trust-item reveal"><div class="trust-icon">🎧</div><div><div class="trust-title">24/7 Support</div><div class="trust-desc">Help whenever you need</div></div></div>
     </div>
   </div>
 </div>
@@ -191,7 +201,7 @@
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
       <a href="shop.html?brand=nike" class="brand-cat-card reveal">
         <div class="brand-cat-logo">
-          <img src="assets/images/nike_logo2.webp" alt="Nike" onerror="this.parentElement.innerHTML='NIKE'"/>
+          <img src="assets/images/nike.png" alt="Nike" onerror="this.parentElement.innerHTML='NIKE'"/>
         </div>
         <div class="brand-cat-name">Nike</div>
         <div class="brand-cat-count">→ Shop Nike</div>
@@ -205,7 +215,7 @@
       </a>
       <a href="shop.html?brand=mizuno" class="brand-cat-card reveal delay-2">
         <div class="brand-cat-logo">
-          <img src="assets/images/mizuno_logo.png" alt="Mizuno" onerror="this.parentElement.innerHTML='MIZUNO'"/>
+          <img src="assets/images/mizuno.png" alt="Mizuno" onerror="this.parentElement.innerHTML='MIZUNO'"/>
         </div>
         <div class="brand-cat-name">Mizuno</div>
         <div class="brand-cat-count">→ Shop Mizuno</div>
@@ -229,7 +239,7 @@
   </div>
 </section>
 
-<!-- ======= INSTAGRAM GRID ======= -->
+<!-- ======= CUSTOMER PHOTOS SLIDER ======= -->
 <section style="padding:0 0 80px;">
   <div class="container">
     <div style="text-align:center;margin-bottom:20px;">
@@ -237,37 +247,56 @@
       <h2 class="section-title reveal" style="margin-top:8px;font-size:clamp(1.5rem,4vw,2.5rem);">OUR CUSTOMERS</h2>
       <p style="color:var(--silver);font-size:13px;margin-top:8px;" class="reveal">Real people, real gear — tag us @primeshoejerseyhub</p>
     </div>
-    <div class="insta-grid">
-      <a href="https://www.instagram.com/p/DQ7el-Ek4El/">
-        <div class="insta-tile reveal">
-          <img src="assets/images/reviews/review1.jpg" alt="customer" loading="lazy"/></div>
-      </a>
-        
-      <a href="https://www.instagram.com/p/DQzXepXk_3G/">
-        <div class="insta-tile reveal delay-1">
-          <img src="assets/images/reviews/review2.jpg" alt="insta" loading="lazy">
-        </div>
-      </a>
-
-      <div class="insta-tile reveal delay-2"><img src="assets/images/reviews/review3.jpg" alt="customer" loading="lazy"/><div class="insta-overlay"><span style="color:var(--blue);font-family:var(--font-display);font-size:1.1rem;">View</span></div></div>
-
-      <div class="insta-tile reveal delay-3"><img src="assets/images/reviews/review4.jpg" alt="customer" loading="lazy"/><div class="insta-overlay"><span style="color:var(--blue);font-family:var(--font-display);font-size:1.1rem;">View</span></div></div>
-
-      <a href="https://www.instagram.com/p/DVHEFMhkx-S/">
-        <div class="insta-tile reveal delay-4">
-          <img src="assets/images/reviews/review5.jpg" alt="insta" loading="lazy">
-        </div>
-      </a>
-    
-      <a href="https://www.instagram.com/p/DVHM3LhE3uF/">
-         <div class="insta-tile reveal">
-            <img src="assets/images/reviews/review6.jpg" alt="insta" loading="lazy">
-          </div>
-      </a>
-  </div>
-  <div style="text-align:center;margin-top:24px;">
+    <div class="photo-carousel-wrap">
+      <div class="photo-carousel" id="photo-carousel">
+        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide"><img src="assets/images/reviews/review1.jpg" alt="customer" loading="lazy"/></a>
+        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide"><img src="assets/images/reviews/review2.jpg" alt="customer" loading="lazy"/></a>
+        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide">
+        <img src="assets/images/reviews/review3.jpg" alt="customer" loading="lazy"/>
+        </a>
+        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide">
+        <img src="assets/images/reviews/review4.jpg" alt="customer" loading="lazy"/></a>
+        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide"><img src="assets/images/reviews/review5.jpg" alt="customer" loading="lazy"/></a>
+        <a href="https://www.instagram.com/p/DVHM3LhE3uF/" target="_blank" class="photo-slide"><img src="assets/images/reviews/review6.jpg" alt="customer" loading="lazy"/></a>
+        <!-- Duplicate for seamless loop -->
+        <a href="https://www.instagram.com/p/DQ7el-Ek4El/" target="_blank" class="photo-slide"><img src="assets/images/reviews/review1.jpg" alt="customer" loading="lazy"/></a>
+        <a href="https://www.instagram.com/p/DQzXepXk_3G/" target="_blank" class="photo-slide"><img src="assets/images/reviews/review2.jpg" alt="customer" loading="lazy"/></a>
+        <div class="photo-slide"><img src="assets/images/reviews/review3.jpg" alt="customer" loading="lazy"/></div>
+        <div class="photo-slide"><img src="assets/images/reviews/review4.jpg" alt="customer" loading="lazy"/></div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:24px;">
       <a href="https://www.instagram.com/primeshoejerseyhub/" target="_blank" class="btn btn-outline reveal">Follow on Instagram →</a>
     </div>
+  </div>
+</section>
+
+<!-- ======= CUSTOMER REVIEWS SLIDER ======= -->
+<section style="padding:60px 0 80px;background:var(--dark-2);border-top:1px solid var(--border-solid);">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:36px;">
+      <div class="section-label reveal" style="justify-content:center;">Testimonials</div>
+      <h2 class="section-title reveal" style="margin-top:8px;font-size:clamp(1.5rem,4vw,2.5rem);">WHAT CUSTOMERS SAY</h2>
+      <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:8px;" class="reveal">
+        <span style="color:#fbbf24;font-size:18px;">★★★★★</span>
+        <span style="font-family:var(--font-cond);font-weight:700;color:var(--silver);font-size:13px;margin-left:6px;">4.9 / 5 · 30K+ Happy Customers</span>
+      </div>
+    </div>
+    <div class="review-carousel-wrap">
+      <div class="review-carousel" id="review-carousel">
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Got my Adidas jersey within 5 days! Quality is amazing, exactly like the pictures. Will definitely order again."</p><div class="review-author"><div class="review-avatar">R</div><div><div class="review-name">Rahul M.</div><div class="review-loc">Mumbai</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"The Nike studs I ordered are genuine quality. Paid via UPI and uploading the screenshot was super easy. Fast delivery!"</p><div class="review-author"><div class="review-avatar">A</div><div><div class="review-name">Arjun S.</div><div class="review-loc">Delhi</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Best football gear shop online. Ordered Mizuno shoes and they fit perfectly. Great packaging too!"</p><div class="review-author"><div class="review-avatar">P</div><div><div class="review-name">Priya K.</div><div class="review-loc">Bangalore</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Ordered 3 jerseys at once and all arrived in perfect condition. The checkout is so smooth now with the screenshot upload."</p><div class="review-author"><div class="review-avatar">S</div><div><div class="review-name">Suresh T.</div><div class="review-loc">Chennai</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Trusted site. Paid via PhonePe, uploaded screenshot and got confirmation instantly. Jersey looks exactly like the photo!"</p><div class="review-author"><div class="review-avatar">K</div><div><div class="review-name">Karan P.</div><div class="review-loc">Pune</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Fast delivery, quality products, and very helpful support on WhatsApp. 10/10 would recommend to all football fans."</p><div class="review-author"><div class="review-avatar">V</div><div><div class="review-name">Vijay R.</div><div class="review-loc">Hyderabad</div></div></div></div>
+        <!-- Duplicates for loop -->
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Got my Adidas jersey within 5 days! Quality is amazing, exactly like the pictures. Will definitely order again."</p><div class="review-author"><div class="review-avatar">R</div><div><div class="review-name">Rahul M.</div><div class="review-loc">Mumbai</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"The Nike studs I ordered are genuine quality. Paid via UPI and uploading the screenshot was super easy. Fast delivery!"</p><div class="review-author"><div class="review-avatar">A</div><div><div class="review-name">Arjun S.</div><div class="review-loc">Delhi</div></div></div></div>
+        <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"Best football gear shop online. Ordered Mizuno shoes and they fit perfectly. Great packaging too!"</p><div class="review-author"><div class="review-avatar">P</div><div><div class="review-name">Priya K.</div><div class="review-loc">Bangalore</div></div></div></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ======= PAYMENT LOGOS ======= -->
@@ -301,9 +330,9 @@
     <div>  
       <div class="footer-col-title">Useful links</div>
         <div class="footer-links">
-          <a href="tracking.html" class="footer-link">Order Tracking</a>
+          <a href="tracking.html" class="footer-link">Track Your Order</a>
           <a href="privacy.html" class="footer-link">Privacy Policy</a>
-          <a href="refund-policy.html" class="footer-link">Refund Policy</a>
+          <a href="refund-policy.html" class="footer-link">Refund/Return Policy</a>
           <a href="terms.html" class="footer-link">Terms of Service</a>
           <a href="shipping.html" class="footer-link">Shipping Policy</a>
 
@@ -317,7 +346,7 @@
           <a href="contact.html" class="footer-link">Contact Us</a>
           <a href="about.html" class="footer-link">About Us</a>
           <a href="how-it-works.html" class="footer-link">How It Works</a>
-          <a href="admin.html" class="footer-link" style="color:var(--silver);font-size:12px;">⚙️ Admin Panel</a>
+
         </div>
       </div>
 
@@ -340,7 +369,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <div class="footer-copy">© 2025 Prime Shoe Jersey Hub · All rights reserved</div>
+      <div class="footer-copy">© 2026 Prime Shoe Jersey Hub · All rights reserved</div>
 
     </div>
   </div>
@@ -352,5 +381,15 @@
 <script type="module" src="assets/js/cart.js"></script>
 <!-- App init — also calls renderIndexPage() after Firebase load -->
 <script type="module" src="assets/js/app.js"></script>
+<script>
+// Mobile nav active link highlight
+(function(){
+  const cur = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('.mobile-nav-link').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (href === cur || (cur === '' && href === 'index.html')) a.classList.add('active');
+  });
+})();
+</script>
 </body>
 </html>
