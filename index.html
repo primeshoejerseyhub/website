@@ -124,6 +124,7 @@
     <a href="contact.html" class="mobile-nav-link">📞 Contact</a>
   </div>
 </div>
+<div id="mobile-nav-backdrop"></div>
 
 <!-- MOBILE SEARCH OVERLAY -->
 <div id="mobile-search-overlay" role="dialog" aria-modal="true" aria-label="Search">
@@ -158,11 +159,16 @@
       <p class="hero-subtitle">Premium Football Shoes,Jerseys & Gear — Authentic Quality, Delivered Fast Across India</p>
       <div class="hero-ctas">
         <a href="shop.html" class="btn btn-blue btn-lg">Shop Now →</a>
+        
+        <a href="shop.html?cat=jersey" class="btn btn-brand-hero" data-brand="adidas">
+          <img src="assets/images/jersey.png" alt="Adidas" onerror="this.style.display='none'"/> Jerseys
+        </a>
+
         <a href="shop.html?brand=adidas" class="btn btn-brand-hero" data-brand="adidas">
-          <img src="assets/images/adidas_logo3.png" alt="Adidas" onerror="this.style.display='none'"/> Adidas
+          <img src="assets/images/Adidas_Logo.png" alt="Adidas" onerror="this.style.display='none'"/> Adidas
         </a>
         <a href="shop.html?brand=nike" class="btn btn-brand-hero" data-brand="nike">
-          <img src="assets/images/nike.png" alt="Nike" onerror="this.style.display='none'"/> Nike
+          <img src="assets/images/Logo_NIKE.png" alt="Nike" onerror="this.style.display='none'"/> Nike
         </a>
         <a href="shop.html?brand=mizuno" class="btn btn-brand-hero" data-brand="mizuno">
           <img src="assets/images/mizuno.png" alt="Mizuno" onerror="this.style.display='none'"/> Mizuno
@@ -196,19 +202,19 @@
   <div class="container">
     <div style="margin-bottom:40px;">
       <div class="section-label reveal">Collections</div>
-      <h2 class="section-title reveal" style="margin-top:10px;">SHOP BY<br/>BRAND</h2>
+      <h2 class="section-title reveal" style="margin-top:10px;">SHOP BY<br/>CATEGORY</h2>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
       <a href="shop.html?brand=nike" class="brand-cat-card reveal">
         <div class="brand-cat-logo">
-          <img src="assets/images/nike.png" alt="Nike" onerror="this.parentElement.innerHTML='NIKE'"/>
+          <img src="assets/images/Logo_NIKE.png" alt="Nike" onerror="this.parentElement.innerHTML='NIKE'"/>
         </div>
         <div class="brand-cat-name">Nike</div>
         <div class="brand-cat-count">→ Shop Nike</div>
       </a>
       <a href="shop.html?brand=adidas" class="brand-cat-card reveal delay-1">
         <div class="brand-cat-logo">
-          <img src="assets/images/adidas_logo3.png" alt="Adidas" onerror="this.parentElement.innerHTML='ADIDAS'"/>
+          <img src="assets/images/Adidas_Logo.png" alt="Adidas" onerror="this.parentElement.innerHTML='ADIDAS'"/>
         </div>
         <div class="brand-cat-name">Adidas</div>
         <div class="brand-cat-count">→ Shop Adidas</div>
@@ -219,6 +225,13 @@
         </div>
         <div class="brand-cat-name">Mizuno</div>
         <div class="brand-cat-count">→ Shop Mizuno</div>
+      </a>
+      <a href="shop.html?cat=jersey" class="brand-cat-card reveal delay-3">
+        <div class="brand-cat-logo" style="font-size:2.8rem;background:none;">
+          <img src="assets/images/jersey.png" alt="Jerseys" onerror="this.parentElement.innerHTML='JERSEYS'"/>
+        </div>
+        <div class="brand-cat-name">Jerseys</div>
+        <div class="brand-cat-count">→ Shop Jerseys</div>
       </a>
     </div>
   </div>
@@ -248,22 +261,7 @@
       <p style="color:var(--silver);font-size:13px;margin-top:8px;" class="reveal">Real people, real gear — tag us @primeshoejerseyhub</p>
     </div>
     <div class="photo-carousel-wrap">
-      <div class="photo-carousel" id="photo-carousel">
-        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide"><img src="assets/images/reviews/review1.jpg" alt="customer" loading="lazy"/></a>
-        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide"><img src="assets/images/reviews/review2.jpg" alt="customer" loading="lazy"/></a>
-        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide">
-        <img src="assets/images/reviews/review3.jpg" alt="customer" loading="lazy"/>
-        </a>
-        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide">
-        <img src="assets/images/reviews/review4.jpg" alt="customer" loading="lazy"/></a>
-        <a href="https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" target="_blank" class="photo-slide"><img src="assets/images/reviews/review5.jpg" alt="customer" loading="lazy"/></a>
-        <a href="https://www.instagram.com/p/DVHM3LhE3uF/" target="_blank" class="photo-slide"><img src="assets/images/reviews/review6.jpg" alt="customer" loading="lazy"/></a>
-        <!-- Duplicate for seamless loop -->
-        <a href="https://www.instagram.com/p/DQ7el-Ek4El/" target="_blank" class="photo-slide"><img src="assets/images/reviews/review1.jpg" alt="customer" loading="lazy"/></a>
-        <a href="https://www.instagram.com/p/DQzXepXk_3G/" target="_blank" class="photo-slide"><img src="assets/images/reviews/review2.jpg" alt="customer" loading="lazy"/></a>
-        <div class="photo-slide"><img src="assets/images/reviews/review3.jpg" alt="customer" loading="lazy"/></div>
-        <div class="photo-slide"><img src="assets/images/reviews/review4.jpg" alt="customer" loading="lazy"/></div>
-      </div>
+      <div class="photo-carousel" id="photo-carousel"></div>
     </div>
     <div style="text-align:center;margin-top:24px;">
       <a href="https://www.instagram.com/primeshoejerseyhub/" target="_blank" class="btn btn-outline reveal">Follow on Instagram →</a>
