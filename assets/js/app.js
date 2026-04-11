@@ -22,25 +22,27 @@ function initNavbar() {
 
   const hamburger = document.getElementById("hamburger");
   const mobileNav = document.getElementById("mobile-nav");
+  const backdrop = document.getElementById("mobile-nav-backdrop");
   if (hamburger && mobileNav) {
+    function openNav() {
+      mobileNav.classList.add("open");
+      hamburger.classList.add("open");
+      if (backdrop) backdrop.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+    function closeNav() {
+      mobileNav.classList.remove("open");
+      hamburger.classList.remove("open");
+      if (backdrop) backdrop.classList.remove("open");
+      document.body.style.overflow = "";
+    }
     hamburger.addEventListener("click", (e) => {
       e.stopPropagation();
-      const isOpen = mobileNav.classList.toggle("open");
-      const lines = hamburger.querySelectorAll(".hamburger-lines span");
-      if (isOpen) {
-        lines[0].style.transform = "rotate(45deg) translate(5px,5px)";
-        lines[1].style.opacity = "0";
-        lines[2].style.transform = "rotate(-45deg) translate(5px,-5px)";
-      } else {
-        lines[0].style.transform = "";
-        lines[1].style.opacity = "";
-        lines[2].style.transform = "";
-      }
+      mobileNav.classList.contains("open") ? closeNav() : openNav();
     });
+    if (backdrop) backdrop.addEventListener("click", closeNav);
     document.addEventListener("click", e => {
-      if (!hamburger.contains(e.target) && !mobileNav.contains(e.target)) {
-        mobileNav.classList.remove("open");
-      }
+      if (!hamburger.contains(e.target) && !mobileNav.contains(e.target)) closeNav();
     });
   }
 
@@ -164,7 +166,7 @@ function initSearch() {
 }
 
 // ---- HERO SLIDER ----
-const HERO_SLIDES = [
+const HERO_SLIDES_FALLBACK = [
   "assets/images/reviews/review1.jpg",
   "assets/images/reviews/review2.jpg",
   "assets/images/reviews/review3.jpg",
@@ -173,13 +175,31 @@ const HERO_SLIDES = [
   "assets/images/reviews/review6.jpg",
 ];
 
-function initHeroSlider() {
+async function loadHeroImages() {
+  try {
+    const { db } = await import("./firebase.js");
+    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDoc(doc(db, "siteConfig", "heroImages"));
+    if (snap.exists()) {
+      const data = snap.data();
+      const imgs = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
+      if (imgs.length > 0) return imgs;
+    }
+  } catch (e) {
+    console.warn("[Hero] Could not load hero images from Firestore:", e.message);
+  }
+  return HERO_SLIDES_FALLBACK;
+}
+
+async function initHeroSlider() {
   const slider = document.getElementById("hero-slider");
   const dotsContainer = document.getElementById("hero-dots");
   if (!slider) return;
   let current = 0;
 
-  HERO_SLIDES.forEach((src, i) => {
+  const slides = await loadHeroImages();
+
+  slides.forEach((src, i) => {
     const slide = document.createElement("div");
     slide.className = `hero-slide${i === 0 ? " active" : ""}`;
     slide.style.backgroundImage = `url(${src})`;
@@ -187,7 +207,7 @@ function initHeroSlider() {
   });
 
   if (dotsContainer) {
-    HERO_SLIDES.forEach((_, i) => {
+    slides.forEach((_, i) => {
       const dot = document.createElement("div");
       dot.className = `hero-dot${i === 0 ? " active" : ""}`;
       dot.onclick = () => goToSlide(i);
@@ -201,7 +221,7 @@ function initHeroSlider() {
     current = idx;
   }
 
-  setInterval(() => goToSlide((current + 1) % HERO_SLIDES.length), 5000);
+  setInterval(() => goToSlide((current + 1) % slides.length), 5000);
 }
 
 // ---- PRODUCT CARD BUILDER ----
@@ -250,6 +270,45 @@ window.buildProductCard = function(product, opts = {}) {
       </div>
     </div>`;
 };
+
+// ---- CUSTOMER PHOTO CAROUSEL (dynamic) ----
+const PHOTO_CAROUSEL_FALLBACK = [
+  { url: "assets/images/reviews/review1.jpg", link: "https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" },
+  { url: "assets/images/reviews/review2.jpg", link: "https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" },
+  { url: "assets/images/reviews/review3.jpg", link: "https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" },
+  { url: "assets/images/reviews/review4.jpg", link: "https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" },
+  { url: "assets/images/reviews/review5.jpg", link: "https://www.instagram.com/s/aGlnaGxpZ2h0OjE3ODY1Mjg1MzcyNDk4OTQy?igsh=dTEyeW45bTg2eDB5" },
+  { url: "assets/images/reviews/review6.jpg", link: "https://www.instagram.com/p/DVHM3LhE3uF/" },
+];
+
+async function loadPhotoCarouselImages() {
+  try {
+    const { db } = await import("./firebase.js");
+    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDoc(doc(db, "siteConfig", "customerPhotos"));
+    if (snap.exists()) {
+      const data = snap.data();
+      const imgs = Array.isArray(data.images) ? data.images.filter(i => i && i.url) : [];
+      if (imgs.length > 0) return imgs;
+    }
+  } catch (e) {
+    console.warn("[PhotoCarousel] Could not load from Firestore:", e.message);
+  }
+  return PHOTO_CAROUSEL_FALLBACK;
+}
+
+async function initPhotoCarousel() {
+  const carousel = document.getElementById("photo-carousel");
+  if (!carousel) return;
+  const photos = await loadPhotoCarouselImages();
+  // Duplicate for seamless loop
+  const allPhotos = [...photos, ...photos];
+  carousel.innerHTML = allPhotos.map(p =>
+    p.link
+      ? `<a href="${p.link}" target="_blank" class="photo-slide"><img src="${p.url}" alt="customer" loading="lazy"/></a>`
+      : `<div class="photo-slide"><img src="${p.url}" alt="customer" loading="lazy"/></div>`
+  ).join("");
+}
 
 // ---- PAGE RENDER ----
 function renderIndexPage() {
@@ -355,6 +414,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initNavbar();
   initSearch();
   initHeroSlider();
+  initPhotoCarousel();
   initScrollReveal();
   initRipple();
   initTicker();
