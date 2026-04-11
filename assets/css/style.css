@@ -1557,7 +1557,7 @@ footer{background:var(--dark-2);border-top:1px solid var(--border-solid);margin-
 @keyframes spinnerSpin{to{transform:rotate(360deg)}}
 
 /* Lazy load image fade-in */
-img[loading="lazy"]{opacity:0;transition:opacity 0.4s;}
+img[loading="lazy"]{transition:opacity 0.4s;}
 img[loading="lazy"].loaded{opacity:1;}
 
 /* Button active feedback */
