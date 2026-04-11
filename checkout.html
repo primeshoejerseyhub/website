@@ -1,322 +1,495 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Checkout — Prime Shoe Jersey Hub</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/style.css"/>
-</head>
-<body>
+// ============================================
+// PRIME SHOE JERSEY HUB — Checkout v4 (Fixed Flow)
+// ============================================
+// Flow: Address → Payment Instructions → Upload Screenshot → THEN Save Order → Success
 
-<!-- Minimal nav -->
-<nav id="navbar" style="position:sticky;">
-  <div class="nav-inner">
-    <div class="nav-left">
-      <a href="shop.html" style="display:flex;align-items:center;gap:6px;font-family:var(--font-cond);font-weight:700;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--silver);">← Back</a>
-    </div>
-    <a href="index.html" class="nav-logo">
-      <img src="assets/images/logo.png" alt="Logo" class="nav-logo-img" onerror="this.style.display='none'"/>
-      <div class="nav-logo-text"><span class="brand-top">Prime Shoe</span><span class="brand-sub">Jersey Hub</span></div>
-    </a>
-    <div class="nav-right">
-      <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);display:flex;align-items:center;gap:6px;">🔒 Secure Checkout</span>
-    </div>
-  </div>
-</nav>
+import { db } from "./firebase.js";
+import { uploadScreenshot } from "./cloudinary.js";
+import {
+  collection,
+  addDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-<div class="container section-pad" style="padding-top:40px;">
-  <!-- Step indicator -->
-  <div class="checkout-step-indicator" style="max-width:520px;margin-bottom:40px;">
-    <div class="csi-step active" id="csi-1">
-      <div class="csi-dot">1</div>
-      <div class="csi-label">Address</div>
-    </div>
-    <div class="csi-step" id="csi-2">
-      <div class="csi-dot">2</div>
-      <div class="csi-label">Payment</div>
-    </div>
-    <div class="csi-step" id="csi-3">
-      <div class="csi-dot">✓</div>
-      <div class="csi-label">Confirmed</div>
-    </div>
-  </div>
+// ---- CONFIG ----
+const UPI_ID = "8210647493@kotak811";
+const STORE_NAME = "Prime Shoe Jersey Hub";
+const WA_NUMBER = "919239394022";
 
-  <!-- ===== CHECKOUT FORM ===== -->
-  <div id="checkout-form-section">
-    <div class="checkout-layout">
-      <!-- LEFT -->
-      <div>
-        <div class="checkout-card">
-          <div class="checkout-card-title">📦 Delivery Details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div style="grid-column:span 2;">
-              <label class="form-label" for="co-name">Full Name *</label>
-              <input class="form-input" type="text" id="co-name" placeholder="Rahul Sharma" required/>
-            </div>
-            <div>
-              <label class="form-label" for="co-phone">Phone Number *</label>
-              <input class="form-input" type="tel" id="co-phone" placeholder="+91 98765 43210" required/>
-            </div>
-            <div>
-              <label class="form-label" for="co-email">Email (optional)</label>
-              <input class="form-input" type="email" id="co-email" placeholder="rahul@email.com"/>
-            </div>
-            <div style="grid-column:span 2;">
-              <label class="form-label" for="co-address">Full Address *</label>
-              <input class="form-input" type="text" id="co-address" placeholder="House no., Street, Locality" required/>
-            </div>
-            <div>
-              <label class="form-label" for="co-city">City *</label>
-              <input class="form-input" type="text" id="co-city" placeholder="Mumbai" required/>
-            </div>
-            <div>
-              <label class="form-label" for="co-pin">PIN Code *</label>
-              <div style="position:relative;">
-                <input class="form-input" type="text" id="co-pin" placeholder="400001" maxlength="6" required oninput="autoDetectPincode(this.value)"/>
-                <span id="pin-loading" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--blue);">⏳</span>
-              </div>
-              <div id="pin-error" style="font-size:11px;color:#f87171;margin-top:4px;display:none;">Invalid PIN code</div>
-            </div>
-            <div>
-              <label class="form-label" for="co-state">State</label>
-              <select class="form-input" id="co-state">
-                <option value="">Select State</option>
-                <option>Andaman and Nicobar Islands</option>
-                <option>Andhra Pradesh</option>
-                <option>Arunachal Pradesh</option>
-                <option>Assam</option>
-                <option>Bihar</option>
-                <option>Chandigarh</option>
-                <option>Chhattisgarh</option>
-                <option>Dadra and Nagar Haveli and Daman and Diu</option>
-                <option>Delhi</option>
-                <option>Goa</option>
-                <option>Gujarat</option>
-                <option>Haryana</option>
-                <option>Himachal Pradesh</option>
-                <option>Jammu and Kashmir</option>
-                <option>Jharkhand</option>
-                <option>Karnataka</option>
-                <option>Kerala</option>
-                <option>Ladakh</option>
-                <option>Lakshadweep</option>
-                <option>Madhya Pradesh</option>
-                <option>Maharashtra</option>
-                <option>Manipur</option>
-                <option>Meghalaya</option>
-                <option>Mizoram</option>
-                <option>Nagaland</option>
-                <option>Odisha</option>
-                <option>Puducherry</option>
-                <option>Punjab</option>
-                <option>Rajasthan</option>
-                <option>Sikkim</option>
-                <option>Tamil Nadu</option>
-                <option>Telangana</option>
-                <option>Tripura</option>
-                <option>Uttar Pradesh</option>
-                <option>Uttarakhand</option>
-                <option>West Bengal</option>
-              </select>
-            </div>
-          </div>
-        </div>
+// Pending order data stored before screenshot upload
+let _pendingOrderData = null;
+let _pendingOrderMeta = null;
 
-        <!-- How payment works notice -->
-        <div style="background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.2);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px;">
-          <div style="font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;">📱 How It Works</div>
-          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:rgba(240,246,252,0.8);">
-            <div style="display:flex;gap:10px;"><span style="color:var(--blue);font-weight:700;flex-shrink:0;">1.</span>Fill your address & click Place Order</div>
-            <div style="display:flex;gap:10px;"><span style="color:var(--blue);font-weight:700;flex-shrink:0;">2.</span>Pay via UPI (ID & QR code shown next)</div>
-            <div style="display:flex;gap:10px;"><span style="color:var(--blue);font-weight:700;flex-shrink:0;">3.</span>Upload payment screenshot to confirm order ✅</div>
-          </div>
-        </div>
+// ---- COUPON STATE ----
+let _appliedCoupon = null; // { code, discountType, value } or null
 
-        <button class="btn btn-blue btn-full btn-lg" onclick="placeOrder()" id="place-order-btn">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-          Continue to Payment →
-        </button>
-        <p style="text-align:center;font-size:11px;color:var(--silver);margin-top:10px;">By placing order you agree to our <a href="terms.html" style="color:var(--blue);">Terms of Service</a> and <a href="refund-policy.html" style="color:var(--blue);">Refund/Return Policy</a></p>
-      </div>
-
-      <!-- RIGHT: Order Summary -->
-      <div class="order-summary-card">
-        <h3 style="font-family:var(--font-cond);font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Order Summary</h3>
-        <div id="order-items-list"></div>
-        <div class="order-totals">
-          <div class="order-total-row"><span>Subtotal</span><span id="co-subtotal">₹0</span></div>
-          <div class="order-total-row"><span>Shipping</span><span style="color:var(--blue);font-family:var(--font-cond);font-weight:700;" id="co-shipping">FREE</span></div>
-          <div class="order-total-row final"><span>Total</span><span id="co-total" style="color:var(--blue);">₹0</span></div>
-        </div>
-        <div style="margin-top:14px;background:var(--dark-3);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--silver);">
-          📱 Pay via UPI after placing order
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== STEP 2: PAYMENT SCREEN ===== -->
-  <div class="success-screen" id="payment-screen">
-
-    <div class="success-icon-ring">📱</div>
-    <h2 class="success-title">PAY NOW</h2>
-    <div class="success-status" style="background:rgba(56,189,248,0.12);color:var(--blue);border:1px solid rgba(56,189,248,0.3);">Step 2 of 3 — Complete Payment</div>
-
-    <div class="success-order-box">
-      <div class="success-order-row">
-        <span class="sol">Order ID</span>
-        <span class="sov" id="s-order-id" style="color:var(--blue);font-family:var(--font-display);font-size:1.1rem;"></span>
-      </div>
-      <div class="success-order-row">
-        <span class="sol">Name</span>
-        <span class="sov" id="s-name"></span>
-      </div>
-      <div class="success-order-row">
-        <span class="sol">Amount to Pay</span>
-        <span class="sov" id="s-amount" style="color:var(--blue);font-family:var(--font-display);font-size:1.2rem;"></span>
-      </div>
-    </div>
-
-    <!-- UPI Payment Block -->
-    <div class="upi-block">
-      <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--silver);margin-bottom:4px;">Pay via UPI</div>
-      <div class="upi-id-display" id="upi-id-display">8210647493@kotak811</div>
-      <button class="upi-copy-btn" onclick="copyUPI()">📋 Copy UPI ID</button>
-      <div class="upi-qr-wrap">
-        <div style="text-align:center;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.05em;margin-bottom:4px;">QR CODE</div>
-          <div style="font-size:9px;color:#666;">Scan with any UPI app</div>
-          <div style="font-size:9px;color:#888;margin-top:4px;">
-            <img src="assets/images/qr.png" alt="QR">
-          </div>
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--silver);">GPay · PhonePe · Paytm · BHIM</div>
-    </div>
-
-    <!-- Payment Instructions -->
-    <div class="payment-instructions">
-      <div style="font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--blue);margin-bottom:14px;">📋 Payment Instructions</div>
-      <div class="pi-step"><div class="pi-num">1</div><div class="pi-text">Pay the exact amount <strong id="pi-amount" style="color:var(--blue);"></strong> to the UPI ID above or scan the QR code.</div></div>
-      <div class="pi-step"><div class="pi-num">2</div><div class="pi-text">Take a screenshot of your successful payment.</div></div>
-      <div class="pi-step"><div class="pi-num">3</div><div class="pi-text">Upload the screenshot below. Your order will be saved instantly with status <strong style="color:var(--blue);">Paid ✓</strong></div></div>
-    </div>
-
-    <!-- Screenshot Upload Block -->
-    <div style="background:var(--dark-3);border:2px dashed rgba(56,189,248,0.4);border-radius:var(--radius-lg);padding:24px;margin-bottom:16px;width:100%;box-sizing:border-box;">
-      <div style="font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;">
-        📸 Upload Payment Screenshot *
-      </div>
-      <p style="font-size:12px;color:var(--silver);margin-bottom:14px;">
-        Upload your UPI payment screenshot to confirm your order. Order will be saved only after upload.
-      </p>
-      <input type="file" id="screenshot-file-input" accept="image/*"
-        style="font-size:12px;color:var(--white);background:var(--dark-4);border:1px solid var(--border-solid);border-radius:var(--radius-sm);padding:8px;width:100%;cursor:pointer;box-sizing:border-box;" />
-      <div id="screenshot-preview-wrap" style="margin-top:10px;display:none;">
-        <img id="screenshot-preview-img" src="" style="max-width:100%;max-height:200px;border-radius:var(--radius-sm);border:1px solid var(--border-solid);" />
-      </div>
-      <button id="screenshot-upload-btn" class="btn btn-blue btn-full" style="margin-top:14px;font-size:14px;padding:14px;" onclick="uploadAndConfirmOrder()">
-        ☁️ Upload Screenshot & Confirm Order
-      </button>
-      <div id="screenshot-status" style="font-size:11px;color:var(--silver);margin-top:10px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;text-align:center;"></div>
-    </div>
-
-    <!-- WhatsApp fallback -->
-    <a id="whatsapp-btn" href="#" target="_blank" class="whatsapp-btn" style="margin-bottom:16px;">
-      <svg viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      Also Send Screenshot on WhatsApp (Must for placing order)
-    </a>
-  </div>
-
-  <!-- ===== STEP 3: SUCCESS SCREEN ===== -->
-  <div class="success-screen" id="success-screen">
-
-    <div class="success-icon-ring">🎉</div>
-    <h2 class="success-title">ORDER PLACED SUCCESSFULLY!</h2>
-    <div class="success-status" style="background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">Status: Paid ✓</div>
-
-    <div class="success-order-box">
-      <div class="success-order-row">
-        <span class="sol">Order ID</span>
-        <span class="sov" id="success-order-id" style="color:var(--blue);font-family:var(--font-display);font-size:1.1rem;"></span>
-      </div>
-      <div class="success-order-row">
-        <span class="sol">Name</span>
-        <span class="sov" id="success-name"></span>
-      </div>
-      <div class="success-order-row">
-        <span class="sol">Amount Paid</span>
-        <span class="sov" id="success-amount" style="color:var(--blue);font-family:var(--font-display);font-size:1.2rem;"></span>
-      </div>
-      <div class="success-order-row">
-        <span class="sol">Delivery</span>
-        <span class="sov">4–6 Working Days</span>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
-      <a href="tracking.html" id="success-track-btn" class="btn btn-blue" style="padding:12px 24px;">Track Order →</a>
-      <a href="shop.html" class="btn btn-ghost" style="padding:12px 24px;">Continue Shopping</a>
-    </div>
-
-    <p style="font-size:11px;color:var(--silver);margin-top:20px;line-height:1.6;">
-      Questions? WhatsApp us at +91 92393 94022 · Mon–Sat 10am–8pm IST
-    </p>
-  </div>
-</div>
-
-<!-- Footer minimal -->
-<footer style="background:var(--dark-2);border-top:1px solid var(--border-solid);padding:24px 0;margin-top:40px;">
-  <div class="container" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-    <span style="font-size:12px;color:var(--silver);">© 2026 Prime Shoe Jersey Hub · Secure Checkout</span>
-  </div>
-</footer>
-
-<script>
-// Pincode auto-detect (India Post API)
-let _pincodeTimer = null;
-function autoDetectPincode(val) {
-  const pin = val.replace(/\D/g, '');
-  const loadEl = document.getElementById('pin-loading');
-  const errEl = document.getElementById('pin-error');
-  if (errEl) errEl.style.display = 'none';
-  clearTimeout(_pincodeTimer);
-  if (pin.length !== 6) return;
-  if (loadEl) loadEl.style.display = 'inline';
-  _pincodeTimer = setTimeout(async () => {
-    try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-      const data = await res.json();
-      if (loadEl) loadEl.style.display = 'none';
-      if (data[0]?.Status === 'Success') {
-        const info = data[0].PostOffice[0];
-        const cityEl = document.getElementById('co-city');
-        const stateEl = document.getElementById('co-state');
-        if (cityEl && !cityEl.value) cityEl.value = info.District || info.Name || '';
-        if (stateEl) {
-          const stateName = info.State;
-          const opts = stateEl.options;
-          for (let i = 0; i < opts.length; i++) {
-            if (opts[i].text.toLowerCase() === stateName.toLowerCase()) {
-              stateEl.selectedIndex = i; break;
-            }
-          }
-        }
-        if (window.showToast) showToast('📍 ' + (info.District||'') + ', ' + (info.State||'') + ' — auto-filled');
-      } else {
-        if (errEl) errEl.style.display = 'block';
-      }
-    } catch(e) {
-      if (loadEl) loadEl.style.display = 'none';
-    }
-  }, 600);
+function fmt(n) {
+  return "₹" + Number(n).toLocaleString("en-IN");
 }
-</script>
-<!-- Cart & App (non-Firebase pages don't need full product load, but cart needs to work) -->
-<script src="assets/js/cart.js"></script>
-<!-- Checkout — Firebase order saving + Cloudinary screenshot upload -->
-<script type="module" src="assets/js/checkout.js"></script>
-</body>
-</html>
+
+// ---- FEATURE: WhatsApp Auto-message ----
+function buildWhatsAppMessage(orderData) {
+  const { orderId, name, phone, address, items, amount } = orderData;
+  const itemLines = items.map(i =>
+    `  • ${i.name} | Size: ${i.size} | Qty: ${i.qty} | ${fmt(i.price * i.qty)}`
+  ).join("\n");
+  return encodeURIComponent(
+    `🛍️ *NEW ORDER — Prime Shoe Jersey Hub*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📦 *Order ID:* ${orderId}\n` +
+    `👤 *Name:* ${name}\n` +
+    `📱 *Phone:* ${phone}\n` +
+    `📍 *Address:* ${address}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🛒 *Items Ordered:*\n${itemLines}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `💰 *Total Paid:* ${fmt(amount)}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `✅ Payment screenshot uploaded. Please confirm & process.`
+  );
+}
+
+function autoOpenWhatsApp(orderData) {
+  const msg = buildWhatsAppMessage(orderData);
+  const url = `https://wa.me/${WA_NUMBER}?text=${msg}`;
+  // Small delay so success screen renders first
+  setTimeout(() => { window.open(url, "_blank"); }, 1200);
+}
+
+function generateOrderId() {
+  return "PSJH-" + Date.now().toString(36).toUpperCase() + "-" + Math.floor(1000 + Math.random() * 9000);
+}
+
+// ---- NEW: Generate UPI Deep Link ----
+function generateUpiLink(amount, orderId) {
+  const note = encodeURIComponent("Order ID: " + orderId);
+  const name = encodeURIComponent(STORE_NAME);
+  return `upi://pay?pa=${UPI_ID}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+}
+
+// ---- NEW: Handle UPI button tap ----
+window.payViaUpi = function() {
+  if (!_pendingOrderMeta) return;
+  const { orderId, total } = _pendingOrderMeta;
+  const upiLink = generateUpiLink(total, orderId);
+  const btn = document.getElementById("upi-pay-btn");
+
+  let appOpened = false;
+
+  // Phase 1: detect if UPI app opened (page goes hidden)
+  const onHidden = () => {
+    if (document.hidden) {
+      appOpened = true;
+      clearTimeout(noAppTimer);
+      document.removeEventListener("visibilitychange", onHidden);
+      // Phase 2: when user switches BACK, show the nudge
+      document.addEventListener("visibilitychange", onReturn);
+    }
+  };
+
+  // Phase 2: user returned from UPI app to our page
+  const onReturn = () => {
+    if (!document.hidden) {
+      document.removeEventListener("visibilitychange", onReturn);
+      showSwitchBackNudge();
+      // Turn button green to signal "payment done, now upload"
+      if (btn) {
+        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
+        btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
+        btn.style.boxShadow = "0 4px 20px rgba(34,197,94,0.35)";
+        btn.style.fontSize = "14px";
+      }
+    }
+  };
+
+  // If page never goes hidden within 1.5s — no UPI app installed
+  const noAppTimer = setTimeout(() => {
+    document.removeEventListener("visibilitychange", onHidden);
+    if (!appOpened) showUpiNotFoundMessage();
+  }, 1500);
+
+  document.addEventListener("visibilitychange", onHidden);
+
+  // Trigger UPI deep link
+  window.location.href = upiLink;
+
+  // Animate button to "opening" state
+  if (btn) {
+    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+  }
+};
+
+function showUpiNotFoundMessage() {
+  const el = document.getElementById("upi-fallback-msg");
+  if (el) {
+    el.style.display = "block";
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function showSwitchBackNudge() {
+  // Hide no-app fallback if visible
+  const fallback = document.getElementById("upi-fallback-msg");
+  if (fallback) fallback.style.display = "none";
+
+  const nudge = document.getElementById("upi-switchback-nudge");
+  if (nudge) {
+    nudge.style.display = "flex";
+    nudge.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  // Auto-scroll to screenshot upload after a short delay
+  setTimeout(() => {
+    document.getElementById("screenshot-file-input")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 900);
+}
+
+// ---- FEATURE: Coupon / Promo Code ----
+window.applyCoupon = async function() {
+  const input = document.getElementById("coupon-input");
+  const statusEl = document.getElementById("coupon-status");
+  const applyBtn = document.getElementById("coupon-apply-btn");
+  const code = input?.value.trim().toUpperCase();
+
+  if (!code) { if (window.showToast) showToast("Please enter a coupon code.", "error"); return; }
+
+  applyBtn.disabled = true;
+  applyBtn.textContent = "Checking...";
+  if (statusEl) { statusEl.textContent = ""; statusEl.className = "coupon-status"; }
+
+  try {
+    const { getDocs, collection, query, where } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(query(collection(db, "coupons"), where("code", "==", code), where("active", "==", true)));
+
+    if (snap.empty) {
+      if (statusEl) { statusEl.textContent = "✗ Invalid or expired coupon code."; statusEl.className = "coupon-status coupon-error"; }
+      if (window.showToast) showToast("Invalid coupon code.", "error");
+      applyBtn.disabled = false; applyBtn.textContent = "Apply";
+      return;
+    }
+
+    const coupon = { id: snap.docs[0].id, ...snap.docs[0].data() };
+    _appliedCoupon = coupon;
+
+    if (statusEl) {
+      const label = coupon.discountType === "percent"
+        ? `${coupon.value}% off`
+        : `₹${coupon.value} off`;
+      statusEl.textContent = `✓ Coupon applied! ${label}`;
+      statusEl.className = "coupon-status coupon-success";
+    }
+
+    // Swap apply button for remove button
+    applyBtn.textContent = "Remove";
+    applyBtn.disabled = false;
+    applyBtn.onclick = removeCoupon;
+    input.disabled = true;
+
+    renderSummary();
+    if (window.showToast) showToast("Coupon applied! ✓");
+
+  } catch (err) {
+    console.error("[Coupon] Error:", err);
+    if (statusEl) { statusEl.textContent = "✗ Could not verify coupon. Try again."; statusEl.className = "coupon-status coupon-error"; }
+    applyBtn.disabled = false; applyBtn.textContent = "Apply";
+  }
+};
+
+function removeCoupon() {
+  _appliedCoupon = null;
+  const input = document.getElementById("coupon-input");
+  const statusEl = document.getElementById("coupon-status");
+  const applyBtn = document.getElementById("coupon-apply-btn");
+  if (input) { input.value = ""; input.disabled = false; }
+  if (statusEl) { statusEl.textContent = ""; statusEl.className = "coupon-status"; }
+  if (applyBtn) { applyBtn.textContent = "Apply"; applyBtn.disabled = false; applyBtn.onclick = applyCoupon; }
+  renderSummary();
+  if (window.showToast) showToast("Coupon removed.");
+}
+
+function calcDiscount(subtotal) {
+  if (!_appliedCoupon) return 0;
+  if (_appliedCoupon.discountType === "percent") return Math.round(subtotal * _appliedCoupon.value / 100);
+  return Math.min(_appliedCoupon.value, subtotal);
+}
+
+// ---- RENDER ORDER SUMMARY ----
+function renderSummary() {
+  const items = window.loadCart ? window.loadCart() : JSON.parse(localStorage.getItem("psjh_cart_v2") || "[]");
+  const list = document.getElementById("order-items-list");
+  if (!list) return;
+
+  if (!items.length) {
+    list.innerHTML = `<div style="text-align:center;padding:20px;">
+      <div style="font-size:2rem;margin-bottom:8px;">🛒</div>
+      <p style="color:var(--silver);font-size:13px;">Your cart is empty</p>
+      <a href="shop.html" class="btn btn-blue btn-sm" style="margin-top:10px;">Browse Products</a>
+    </div>`;
+    const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    safeSet("co-subtotal", "₹0");
+    safeSet("co-total", "₹0");
+    return;
+  }
+
+  list.innerHTML = items.map(item => `
+    <div class="order-item">
+      <img src="${item.image}" alt="${item.name}" class="order-item-img"
+        onerror="this.src='https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100&q=60'"/>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-cond);font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</div>
+        <div style="font-size:11px;color:var(--silver);margin-top:2px;">Size: ${item.size} · Qty: ${item.qty}</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--blue);margin-top:3px;">${fmt(item.price * item.qty)}</div>
+      </div>
+    </div>`).join("");
+
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = calcDiscount(subtotal);
+  const shipping = (subtotal - discount) >= 999 ? 0 : 99;
+  const total = subtotal - discount + shipping;
+
+  const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  safeSet("co-subtotal", fmt(subtotal));
+  safeSet("co-shipping", shipping === 0 ? "FREE" : fmt(shipping));
+  safeSet("co-total", fmt(total));
+
+  // Discount row — show/hide
+  const discRow = document.getElementById("co-discount-row");
+  const discVal = document.getElementById("co-discount");
+  if (discRow && discVal) {
+    if (discount > 0) {
+      discRow.style.display = "flex";
+      discVal.textContent = "-" + fmt(discount);
+    } else {
+      discRow.style.display = "none";
+    }
+  }
+}
+
+// ---- STEP 1→2: Show Payment Screen (DO NOT save order yet) ----
+window.placeOrder = async function() {
+  const name    = document.getElementById("co-name")?.value.trim();
+  const phone   = document.getElementById("co-phone")?.value.trim();
+  const address = document.getElementById("co-address")?.value.trim();
+  const city    = document.getElementById("co-city")?.value.trim();
+  const pin     = document.getElementById("co-pin")?.value.trim();
+  const state   = document.getElementById("co-state")?.value.trim();
+
+  const toast = window.showToast || function(){};
+
+  if (!name)              { toast("Please enter your full name", "error"); document.getElementById("co-name")?.focus(); return; }
+  if (!phone || phone.replace(/\D/g, "").length < 10) { toast("Please enter a valid phone number", "error"); document.getElementById("co-phone")?.focus(); return; }
+  if (!address)           { toast("Please enter your address", "error"); document.getElementById("co-address")?.focus(); return; }
+  if (!city)              { toast("Please enter your city", "error"); return; }
+  if (!pin || pin.length < 6) { toast("Please enter a valid 6-digit PIN code", "error"); return; }
+
+  const items = window.loadCart ? window.loadCart() : JSON.parse(localStorage.getItem("psjh_cart_v2") || "[]");
+  if (!items.length) { toast("Your cart is empty!", "error"); return; }
+
+  const btn = document.getElementById("place-order-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,0.25);border-top-color:var(--dark);border-radius:50%;animation:spin 0.7s linear infinite;"></span> Processing...`;
+  }
+
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = calcDiscount(subtotal);
+  const shipping = (subtotal - discount) >= 999 ? 0 : 99;
+  const total    = subtotal - discount + shipping;
+  const orderId  = generateOrderId();
+
+  // Store pending order data — will be saved AFTER screenshot upload
+  _pendingOrderData = {
+    orderId,
+    name,
+    phone,
+    address: `${address}, ${city}${state ? ", " + state : ""} - ${pin}`,
+    items: items.map(i => ({ name: i.name, size: i.size, qty: i.qty, price: i.price })),
+    coupon: _appliedCoupon ? _appliedCoupon.code : null,
+    discount: discount,
+    amount: total,
+    screenshot: null,
+    status: "Paid",
+    createdAt: serverTimestamp()
+  };
+  _pendingOrderMeta = { orderId, name, total };
+
+  // Show payment instructions screen
+  showPaymentScreen({ orderId, name, total });
+
+  // Re-enable button
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Place Order →`;
+  }
+};
+
+function showPaymentScreen({ orderId, name, total }) {
+  const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const safeHref = (id, val) => { const el = document.getElementById(id); if (el) el.href = val; };
+
+  safeSet("s-order-id", orderId);
+  safeSet("s-name", name);
+  safeSet("s-amount", fmt(total));
+  safeSet("pi-amount", fmt(total));
+  safeSet("pi-order-id", orderId);
+
+  const upiDisplay = document.getElementById("upi-id-display");
+  if (upiDisplay) upiDisplay.textContent = UPI_ID;
+
+  // Show coupon in payment screen if applied
+  const couponRow = document.getElementById("s-coupon-row");
+  const couponVal = document.getElementById("s-coupon");
+  if (couponRow && couponVal) {
+    if (_appliedCoupon) {
+      const label = _appliedCoupon.discountType === "percent"
+        ? `${_appliedCoupon.code} (${_appliedCoupon.value}% off)`
+        : `${_appliedCoupon.code} (-${fmt(_appliedCoupon.value)})`;
+      couponVal.textContent = label;
+      couponRow.style.display = "flex";
+    } else {
+      couponRow.style.display = "none";
+    }
+  }
+
+  safeHref("track-btn", `tracking.html?id=${orderId}`);
+
+  // ---- NEW: Wire up UPI Pay button with dynamic deep link ----
+  const upiPayBtn = document.getElementById("upi-pay-btn");
+  if (upiPayBtn) {
+    const upiLink = generateUpiLink(total, orderId);
+    // Set href for native anchor behavior on mobile
+    upiPayBtn.setAttribute("data-upi-link", upiLink);
+  }
+
+  // Hide fallback message initially
+  const fallbackMsg = document.getElementById("upi-fallback-msg");
+  if (fallbackMsg) fallbackMsg.style.display = "none";
+
+  const waMsg = encodeURIComponent(
+    `Hi, I placed an order on Prime Shoe Jersey Hub.\n\nOrder ID: ${orderId}\nName: ${name}\nAmount: ${fmt(total)}\n\nI am sending my payment screenshot.`
+  );
+  safeHref("whatsapp-btn", `https://wa.me/${WA_NUMBER}?text=${waMsg}`);
+
+  // Step indicators
+  document.querySelectorAll(".csi-step").forEach(s => s.classList.remove("active"));
+  document.getElementById("csi-1")?.classList.add("done");
+  document.getElementById("csi-2")?.classList.add("active");
+
+  // Switch screens
+  const formSection = document.getElementById("checkout-form-section");
+  const paymentScreen = document.getElementById("payment-screen");
+  if (formSection) formSection.style.display = "none";
+  if (paymentScreen) paymentScreen.classList.add("visible");
+
+  localStorage.setItem('psjh_last_order', orderId);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ---- STEP 3: Upload Screenshot & STEP 4: Save Order ----
+window.uploadAndConfirmOrder = async function() {
+  const fileInput = document.getElementById("screenshot-file-input");
+  const statusEl = document.getElementById("screenshot-status");
+  const btn = document.getElementById("screenshot-upload-btn");
+
+  if (!fileInput?.files?.length) {
+    if (window.showToast) showToast("Please select your payment screenshot first.", "error");
+    return;
+  }
+
+  if (!_pendingOrderData) {
+    if (window.showToast) showToast("Order data lost. Please refresh and try again.", "error");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Uploading...";
+  if (statusEl) { statusEl.textContent = "Uploading screenshot..."; statusEl.style.color = "var(--silver)"; }
+
+  try {
+    // Upload screenshot first
+    const screenshotUrl = await uploadScreenshot(fileInput.files[0]);
+    if (statusEl) statusEl.textContent = "✓ Screenshot uploaded. Saving order...";
+
+    // Now save order to Firestore WITH screenshot
+    _pendingOrderData.screenshot = screenshotUrl;
+    const ref = await addDoc(collection(db, "orders"), _pendingOrderData);
+    console.log("[Checkout] Order saved to Firestore:", ref.id, _pendingOrderData.orderId);
+
+    // Clear cart
+    if (window.cartClear) window.cartClear();
+
+    // Show final success screen
+    showSuccessScreen(_pendingOrderMeta);
+
+    if (window.showToast) showToast("Order Placed Successfully! ✓");
+
+    // Auto-open WhatsApp with full order details
+    autoOpenWhatsApp(_pendingOrderData);
+
+  } catch (err) {
+    console.error("[Checkout] Upload/save error:", err);
+    if (statusEl) { statusEl.textContent = "Upload failed. Try again or use WhatsApp."; statusEl.style.color = "var(--red, #f87171)"; }
+    btn.disabled = false;
+    btn.textContent = "☁️ Try Again";
+  }
+};
+
+function showSuccessScreen({ orderId, name, total }) {
+  const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  safeSet("success-order-id", orderId);
+  safeSet("success-name", name);
+  safeSet("success-amount", fmt(total));
+
+  const trackBtn = document.getElementById("success-track-btn");
+  if (trackBtn) trackBtn.href = `tracking.html?id=${orderId}`;
+
+  // Set manual WhatsApp fallback link (uses full order data)
+  const waLink = document.getElementById("wa-manual-link");
+  if (waLink && _pendingOrderData) {
+    waLink.href = `https://wa.me/${WA_NUMBER}?text=${buildWhatsAppMessage(_pendingOrderData)}`;
+  }
+
+  // Step indicators
+  document.querySelectorAll(".csi-step").forEach(s => { s.classList.remove("active"); s.classList.add("done"); });
+  document.getElementById("csi-3")?.classList.remove("done");
+  document.getElementById("csi-3")?.classList.add("active");
+
+  const paymentScreen = document.getElementById("payment-screen");
+  const successScreen = document.getElementById("success-screen");
+  if (paymentScreen) paymentScreen.classList.remove("visible");
+  if (successScreen) successScreen.classList.add("visible");
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ---- COPY UPI ----
+window.copyUPI = function() {
+  navigator.clipboard.writeText(UPI_ID)
+    .then(() => { if (window.showToast) showToast("UPI ID copied to clipboard! ✓"); })
+    .catch(() => { if (window.showToast) showToast(UPI_ID, "success"); });
+};
+
+// Preview screenshot file
+document.addEventListener("DOMContentLoaded", () => {
+  renderSummary();
+
+  document.getElementById("screenshot-file-input")?.addEventListener("change", function() {
+    const file = this.files[0];
+    if (!file) return;
+    const previewWrap = document.getElementById("screenshot-preview-wrap");
+    const previewImg = document.getElementById("screenshot-preview-img");
+    if (previewWrap && previewImg) {
+      previewImg.src = URL.createObjectURL(file);
+      previewWrap.style.display = "block";
+    }
+    // Update button text
+    const btn = document.getElementById("screenshot-upload-btn");
+    if (btn) btn.textContent = "✅ Upload & Confirm Order";
+  });
+});
+
+// Spinner keyframe
+const spinStyle = document.createElement("style");
+spinStyle.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
+document.head.appendChild(spinStyle);
