@@ -367,7 +367,23 @@ function showPaymentScreen({ orderId, name, total }) {
   if (fallbackMsg) fallbackMsg.style.display = "none";
 
   const waMsg = encodeURIComponent(
-    `Hi, I placed an order on Prime Shoe Jersey Hub.\n\nOrder ID: ${orderId}\nName: ${name}\nAmount: ${fmt(total)}\n\nI am sending my payment screenshot.`
+`NEW ORDER
+Prime Shoe Jersey Hub
+Order ID: ${orderId}
+
+• Name: ${name}
+  Phone: ${_pendingOrderData?.phone || ""}
+
+• Address: ${_pendingOrderData?.address || ""}
+
+Items Ordered:
+${(_pendingOrderData?.items || []).map(i =>
+  `• ${i.name} | Size: ${i.size} | Qty: ${i.qty} | ${i.price * i.qty} Rs`
+).join("\n")}
+
+• Total Paid: ${total} Rs
+
+• Payment screenshot uploaded. Please confirm & process`
   );
   safeHref("whatsapp-btn", `https://wa.me/${WA_NUMBER}?text=${waMsg}`);
 
@@ -424,8 +440,7 @@ window.uploadAndConfirmOrder = async function() {
 
     if (window.showToast) showToast("Order Placed Successfully! ✓");
 
-    // Auto-open WhatsApp with full order details
-    autoOpenWhatsApp(_pendingOrderData);
+    // No automatic WhatsApp message here — customer already sent it when clicking Pay via WhatsApp
 
   } catch (err) {
     console.error("[Checkout] Upload/save error:", err);
@@ -444,10 +459,30 @@ function showSuccessScreen({ orderId, name, total }) {
   const trackBtn = document.getElementById("success-track-btn");
   if (trackBtn) trackBtn.href = `tracking.html?id=${orderId}`;
 
-  // Set manual WhatsApp fallback link (uses full order data)
+  // Set manual WhatsApp fallback link with the same clean format
   const waLink = document.getElementById("wa-manual-link");
   if (waLink && _pendingOrderData) {
-    waLink.href = `https://wa.me/${WA_NUMBER}?text=${buildWhatsAppMessage(_pendingOrderData)}`;
+    const d = _pendingOrderData;
+    const resendMsg = encodeURIComponent(
+`NEW ORDER
+Prime Shoe Jersey Hub
+Order ID: ${d.orderId}
+
+• Name: ${d.name}
+  Phone: ${d.phone || ""}
+
+• Address: ${d.address || ""}
+
+Items Ordered:
+${(d.items || []).map(i =>
+  `• ${i.name} | Size: ${i.size} | Qty: ${i.qty} | ${i.price * i.qty} Rs`
+).join("\n")}
+
+• Total Paid: ${d.amount} Rs
+
+• Payment screenshot uploaded. Please confirm & process`
+    );
+    waLink.href = `https://wa.me/${WA_NUMBER}?text=${resendMsg}`;
   }
 
   // Step indicators
