@@ -20,38 +20,6 @@ const WA_NUMBER = "919239394022";
 let _pendingOrderData = null;
 let _pendingOrderMeta = null;
 
-// iOS restore: if user came back from UPI app, restore pending order state
-(function restoreIOSSession() {
-  try {
-    const savedData = sessionStorage.getItem("psjh_order_data");
-    const savedMeta = sessionStorage.getItem("psjh_order_meta");
-    if (savedData && savedMeta) {
-      const meta = JSON.parse(savedMeta);
-      const data = JSON.parse(savedData);
-      // Only restore if the order was placed recently (within 30 mins)
-      const age = Date.now() - parseInt(meta.orderId.split("-")[1] || "0", 36);
-      if (age < 30 * 60 * 1000) {
-        _pendingOrderData = data;
-        _pendingOrderMeta = meta;
-        // Wait for DOM then show payment screen with switch-back nudge
-        document.addEventListener("DOMContentLoaded", () => {
-          setTimeout(() => {
-            if (_pendingOrderMeta) {
-              showPaymentScreen(_pendingOrderMeta);
-              // Show the switch-back nudge so user knows to upload screenshot
-              setTimeout(() => showSwitchBackNudge(), 400);
-            }
-          }, 300);
-        });
-      } else {
-        // Stale session — clear it
-        sessionStorage.removeItem("psjh_order_data");
-        sessionStorage.removeItem("psjh_order_meta");
-      }
-    }
-  } catch(e) { /* sessionStorage unavailable */ }
-})();
-
 // ---- COUPON STATE ----
 let _appliedCoupon = null; // { code, discountType, value } or null
 
@@ -92,97 +60,77 @@ function generateOrderId() {
   return "PSJH-" + Date.now().toString(36).toUpperCase() + "-" + Math.floor(1000 + Math.random() * 9000);
 }
 
-// ---- NEW: Generate UPI Deep Link ----
+// ---- Generate UPI Deep Link ----
 function generateUpiLink(amount, orderId) {
-  const note = encodeURIComponent("Order ID: " + orderId);
+  const note = encodeURIComponent("Order " + orderId);
   const name = encodeURIComponent(STORE_NAME);
   return `upi://pay?pa=${UPI_ID}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
 }
 
-// ---- NEW: Handle UPI button tap ----
-window.payViaUpi = function() {
-  if (!_pendingOrderMeta) return;
-  const { orderId, total } = _pendingOrderMeta;
-  const upiLink = generateUpiLink(total, orderId);
-  const btn = document.getElementById("upi-pay-btn");
-
-  let appOpened = false;
-  let wasHidden = false;
-
-  // Detect iOS — iOS Safari blocks iframe deep links completely.
-  // Only window.location.href set synchronously inside a user gesture works on iOS.
-  const isIOS = /iP(hone|ad|od)/i.test(navigator.userAgent) ||
-                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-  // Animate button immediately to "opening" state
-  if (btn) {
-    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+// ---- handleUpiTap — called from onclick on the <a> tag ----
+// THE FIX: iOS Safari only opens upi:// when the user directly taps an <a href="upi://...">
+// We set the href on the anchor BEFORE the tap propagates, so iOS treats it as a native link tap.
+// Iframes, window.location.href, and window.open all fail on iOS for custom schemes.
+window.handleUpiTap = function(event) {
+  if (!_pendingOrderMeta) {
+    event.preventDefault();
+    if (window.showToast) showToast("Please place your order first.", "error");
+    return;
   }
 
-  // Detect if UPI app opened — page goes hidden when app launches
-  const onHidden = () => {
+  const { orderId, total } = _pendingOrderMeta;
+  const upiLink = generateUpiLink(total, orderId);
+  const btn = event.currentTarget;
+
+  // Set the href RIGHT NOW before browser follows it — this is what makes iOS work.
+  // iOS reads href at tap time. Since this runs synchronously in the click handler,
+  // the browser will follow this href natively, which iOS allows for custom schemes.
+  btn.href = upiLink;
+
+  // Show switchback nudge when user returns from UPI app
+  let wasHidden = false;
+  let appOpened = false;
+
+  const onVisibility = () => {
     if (document.hidden) {
       wasHidden = true;
     } else if (wasHidden) {
       wasHidden = false;
       appOpened = true;
       clearTimeout(noAppTimer);
-      document.removeEventListener("visibilitychange", onHidden);
+      document.removeEventListener("visibilitychange", onVisibility);
       showSwitchBackNudge();
-      if (btn) {
-        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
-        btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
-        btn.style.boxShadow = "0 4px 20px rgba(34,197,94,0.35)";
-        btn.style.fontSize = "14px";
-      }
+      btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
+      btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
+      btn.style.boxShadow = "0 4px 20px rgba(34,197,94,0.35)";
     }
   };
 
-  // On iOS, give 4s (iOS is slower to switch apps than Android)
-  // On Android, 2s is enough
-  const waitMs = isIOS ? 4000 : 2000;
-
+  // If page never goes hidden within 3s, show "no UPI app" fallback
   const noAppTimer = setTimeout(() => {
-    document.removeEventListener("visibilitychange", onHidden);
+    document.removeEventListener("visibilitychange", onVisibility);
     if (!appOpened) {
-      if (btn) {
-        btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
-        btn.style.background = "";
-        btn.style.boxShadow = "";
-        btn.style.fontSize = "";
-      }
       showUpiNotFoundMessage();
+      // Reset button text
+      btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+      btn.style.background = "";
+      btn.style.boxShadow = "";
     }
-  }, waitMs);
+  }, 3000);
 
-  document.addEventListener("visibilitychange", onHidden);
+  document.addEventListener("visibilitychange", onVisibility);
 
-  // ---- iOS FIX ----
-  // iOS Safari only opens custom URL schemes (upi://) when triggered
-  // synchronously via window.location.href inside a direct user tap.
-  // Hidden iframes are completely blocked on iOS for security reasons.
-  // window.open() is also blocked unless called synchronously in a click handler.
-  //
-  // Android supports both iframe and window.location.href approaches.
-  if (isIOS) {
-    // Synchronous redirect — works on iOS Safari, Chrome iOS, Firefox iOS
-    window.location.href = upiLink;
-  } else {
-    // Android: use hidden iframe so the page doesn't navigate away
-    let iframe = document.getElementById("_upi_trigger_frame");
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "_upi_trigger_frame";
-      iframe.style.cssText = "display:none;width:0;height:0;border:none;position:absolute;top:-9999px;";
-      document.body.appendChild(iframe);
-    }
-    try {
-      iframe.src = upiLink;
-    } catch(e) {
-      // Last resort fallback
-      window.location.href = upiLink;
-    }
-  }
+  // Show "opening..." state
+  btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+
+  // Do NOT call event.preventDefault() — let the browser follow the href naturally.
+  // This is the only reliable way on iOS Safari.
+};
+
+// Keep payViaUpi as alias in case called from anywhere else
+window.payViaUpi = function() {
+  const btn = document.getElementById("upi-pay-btn");
+  if (btn) btn.click();
 };
 
 function showUpiNotFoundMessage() {
@@ -194,7 +142,6 @@ function showUpiNotFoundMessage() {
 }
 
 function showSwitchBackNudge() {
-  // Hide no-app fallback if visible
   const fallback = document.getElementById("upi-fallback-msg");
   if (fallback) fallback.style.display = "none";
 
@@ -204,7 +151,6 @@ function showSwitchBackNudge() {
     nudge.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  // Auto-scroll to screenshot upload after a short delay
   setTimeout(() => {
     document.getElementById("screenshot-file-input")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, 900);
@@ -380,13 +326,6 @@ window.placeOrder = async function() {
   };
   _pendingOrderMeta = { orderId, name, total };
 
-  // Save to sessionStorage so iOS can restore state after returning from UPI app
-  // (iOS navigates away from the page when opening upi:// links)
-  try {
-    sessionStorage.setItem("psjh_order_data", JSON.stringify(_pendingOrderData));
-    sessionStorage.setItem("psjh_order_meta", JSON.stringify(_pendingOrderMeta));
-  } catch(e) { /* sessionStorage unavailable — non-critical */ }
-
   // Show payment instructions screen
   showPaymentScreen({ orderId, name, total });
 
@@ -427,12 +366,10 @@ function showPaymentScreen({ orderId, name, total }) {
 
   safeHref("track-btn", `tracking.html?id=${orderId}`);
 
-  // ---- NEW: Wire up UPI Pay button with dynamic deep link ----
+  // Set the upi:// href directly on the anchor so iOS can follow it natively on tap
   const upiPayBtn = document.getElementById("upi-pay-btn");
   if (upiPayBtn) {
-    const upiLink = generateUpiLink(total, orderId);
-    // Set href for native anchor behavior on mobile
-    upiPayBtn.setAttribute("data-upi-link", upiLink);
+    upiPayBtn.href = generateUpiLink(total, orderId);
   }
 
   // Hide fallback message initially
@@ -504,8 +441,6 @@ window.uploadAndConfirmOrder = async function() {
     _pendingOrderData.screenshot = screenshotUrl;
     const ref = await addDoc(collection(db, "orders"), _pendingOrderData);
     console.log("[Checkout] Order saved to Firestore:", ref.id, _pendingOrderData.orderId);
-    // Clear iOS session backup — order is now safely in Firestore
-    try { sessionStorage.removeItem("psjh_order_data"); sessionStorage.removeItem("psjh_order_meta"); } catch(e) {}
 
     // Clear cart
     if (window.cartClear) window.cartClear();
