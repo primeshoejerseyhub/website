@@ -61,76 +61,97 @@ function generateOrderId() {
 }
 
 // ---- Generate UPI Deep Link ----
+// FIX: amount must be formatted as fixed 2 decimal places (e.g. "2499.00")
+// Some UPI apps on iOS (PhonePe, GPay) reject amounts without decimals.
+// FIX: all query param values are individually encodeURIComponent'd.
 function generateUpiLink(amount, orderId) {
-  const note = encodeURIComponent("Order " + orderId);
-  const name = encodeURIComponent(STORE_NAME);
-  return `upi://pay?pa=${UPI_ID}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+  const pa = encodeURIComponent(UPI_ID);
+  const pn = encodeURIComponent(STORE_NAME);
+  const am = Number(amount).toFixed(2);          // "2499.00" — required by iOS UPI apps
+  const tn = encodeURIComponent("Order " + orderId);
+  const cu = "INR";
+  return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=${cu}&tn=${tn}`;
 }
 
-// ---- handleUpiTap — called from onclick on the <a> tag ----
-// THE FIX: iOS Safari only opens upi:// when the user directly taps an <a href="upi://...">
-// We set the href on the anchor BEFORE the tap propagates, so iOS treats it as a native link tap.
-// Iframes, window.location.href, and window.open all fail on iOS for custom schemes.
-window.handleUpiTap = function(event) {
+// ---- payViaUpi — THE PERMANENT iOS + ANDROID FIX ----
+//
+// ROOT CAUSE of iOS failure:
+//   The original code used a hidden <iframe> with iframe.src = "upi://..."
+//   iOS Safari COMPLETELY BLOCKS custom URL schemes in iframes — silently, no error.
+//   The try/catch fallback never fired because no exception was thrown.
+//
+// THE CORRECT SOLUTION for iOS:
+//   Use window.location.href = upiLink, called SYNCHRONOUSLY inside a direct
+//   user gesture (click/tap handler). This is the ONLY method iOS Safari allows
+//   for opening custom URL schemes from a web page.
+//   iOS does NOT navigate the page away — it hands off to the UPI app and
+//   Safari stays open in the background. When user returns, the page is intact.
+//
+// Android:
+//   window.location.href also works on Android. We no longer need the iframe.
+//   Both platforms now use the same code path.
+//
+window.payViaUpi = function() {
   if (!_pendingOrderMeta) {
-    event.preventDefault();
     if (window.showToast) showToast("Please place your order first.", "error");
     return;
   }
 
   const { orderId, total } = _pendingOrderMeta;
   const upiLink = generateUpiLink(total, orderId);
-  const btn = event.currentTarget;
+  const btn = document.getElementById("upi-pay-btn");
 
-  // Set the href RIGHT NOW before browser follows it — this is what makes iOS work.
-  // iOS reads href at tap time. Since this runs synchronously in the click handler,
-  // the browser will follow this href natively, which iOS allows for custom schemes.
-  btn.href = upiLink;
-
-  // Show switchback nudge when user returns from UPI app
-  let wasHidden = false;
+  // Track whether user actually left the page (app opened)
   let appOpened = false;
+  let wasHidden = false;
 
+  // Listen for page visibility — fires when user switches to UPI app and back
   const onVisibility = () => {
     if (document.hidden) {
-      wasHidden = true;
+      wasHidden = true;  // user left the page (UPI app opened)
     } else if (wasHidden) {
+      // user came BACK from the UPI app
       wasHidden = false;
       appOpened = true;
       clearTimeout(noAppTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       showSwitchBackNudge();
-      btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
-      btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
-      btn.style.boxShadow = "0 4px 20px rgba(34,197,94,0.35)";
+      if (btn) {
+        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
+        btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
+        btn.style.boxShadow = "0 4px 20px rgba(34,197,94,0.35)";
+        btn.style.fontSize = "14px";
+      }
     }
   };
 
-  // If page never goes hidden within 3s, show "no UPI app" fallback
+  // iOS takes longer to switch apps — use 4s timeout
+  // If page never goes hidden → no UPI app found
   const noAppTimer = setTimeout(() => {
     document.removeEventListener("visibilitychange", onVisibility);
     if (!appOpened) {
       showUpiNotFoundMessage();
-      // Reset button text
-      btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
-      btn.style.background = "";
-      btn.style.boxShadow = "";
+      if (btn) {
+        btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+        btn.style.background = "";
+        btn.style.boxShadow = "";
+        btn.style.fontSize = "";
+      }
     }
-  }, 3000);
+  }, 4000);
 
   document.addEventListener("visibilitychange", onVisibility);
 
-  // Show "opening..." state
-  btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+  // Show loading state on button
+  if (btn) {
+    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+  }
 
-  // Do NOT call event.preventDefault() — let the browser follow the href naturally.
-  // This is the only reliable way on iOS Safari.
-};
-
-// Keep payViaUpi as alias in case called from anywhere else
-window.payViaUpi = function() {
-  const btn = document.getElementById("upi-pay-btn");
-  if (btn) btn.click();
+  // THE FIX: window.location.href works on BOTH iOS and Android.
+  // Must be called synchronously inside the click handler (which this is).
+  // iOS Safari treats this as a user-initiated navigation and allows upi:// to open.
+  // The page is NOT lost — iOS suspends Safari and opens the UPI app.
+  window.location.href = upiLink;
 };
 
 function showUpiNotFoundMessage() {
@@ -366,10 +387,11 @@ function showPaymentScreen({ orderId, name, total }) {
 
   safeHref("track-btn", `tracking.html?id=${orderId}`);
 
-  // Set the upi:// href directly on the anchor so iOS can follow it natively on tap
+  // Pre-store the UPI link on the button as a data attribute for reference
+  // The actual navigation happens via window.location.href in payViaUpi()
   const upiPayBtn = document.getElementById("upi-pay-btn");
   if (upiPayBtn) {
-    upiPayBtn.href = generateUpiLink(total, orderId);
+    upiPayBtn.setAttribute("data-upi-link", generateUpiLink(total, orderId));
   }
 
   // Hide fallback message initially
