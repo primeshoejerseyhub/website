@@ -210,55 +210,72 @@
     <div class="upi-block">
       <div style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--silver);margin-bottom:12px;">Choose Payment Method</div>
 
-      <!-- ===== OPTION 1: UPI DIRECT BUTTON (NEW) ===== -->
+      <!-- ===== OPTION 1: APP-SPECIFIC UPI BUTTONS ===== -->
       <div style="background:linear-gradient(135deg,rgba(56,189,248,0.12) 0%,rgba(99,102,241,0.12) 100%);border:1.5px solid rgba(56,189,248,0.45);border-radius:14px;padding:18px 16px 14px;margin-bottom:14px;width:100%;box-sizing:border-box;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
           <span style="background:var(--blue);color:#000;font-family:var(--font-cond);font-size:10px;font-weight:900;letter-spacing:0.1em;padding:2px 8px;border-radius:20px;text-transform:uppercase;">⭐ Recommended</span>
-          <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(240,246,252,0.7);">Option 1 · 1-Click Pay</span>
+          <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(240,246,252,0.7);">Option 1 · Pay via App</span>
         </div>
 
-        <!-- UPI App Icons -->
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-          <img src="assets/images/PhonePe-Logo.wine.png" alt="PhonePe" style="height:28px;object-fit:contain;border-radius:6px;background:#fff;padding:2px 6px;"/>
-          <img src="assets/images/Google_Pay_Logo.svg.png" alt="GPay" style="height:28px;object-fit:contain;border-radius:6px;background:#fff;padding:2px 6px;"/>
-          <img src="assets/images/paytm-icon.svg" alt="Paytm" style="height:28px;object-fit:contain;border-radius:6px;background:#fff;padding:2px 6px;"/>
-          <span style="font-family:var(--font-cond);font-size:10px;color:var(--silver);font-weight:700;">+ Any UPI App</span>
+        <!-- Individual App Buttons — each uses its own deep link scheme so iOS opens exactly that app -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;" id="upi-app-buttons">
+
+          <!-- Google Pay -->
+          <a id="upi-btn-gpay" href="#"
+            onclick="handleUpiClick(event,'gpay')"
+            ontouchstart="this.style.opacity='0.8'" ontouchend="this.style.opacity='1'"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+              padding:14px 10px;border-radius:12px;text-decoration:none;cursor:pointer;
+              background:#1a1f2e;border:1.5px solid rgba(255,255,255,0.1);
+              transition:border-color 0.2s,background 0.2s;-webkit-tap-highlight-color:transparent;">
+            <img src="assets/images/Google_Pay_Logo.svg.png" alt="Google Pay" style="height:32px;object-fit:contain;"/>
+            <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white);">Google Pay</span>
+          </a>
+
+          <!-- PhonePe -->
+          <a id="upi-btn-phonepe" href="#"
+            onclick="handleUpiClick(event,'phonepe')"
+            ontouchstart="this.style.opacity='0.8'" ontouchend="this.style.opacity='1'"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+              padding:14px 10px;border-radius:12px;text-decoration:none;cursor:pointer;
+              background:#1a1f2e;border:1.5px solid rgba(255,255,255,0.1);
+              transition:border-color 0.2s,background 0.2s;-webkit-tap-highlight-color:transparent;">
+            <img src="assets/images/PhonePe-Logo.wine.png" alt="PhonePe" style="height:32px;object-fit:contain;"/>
+            <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white);">PhonePe</span>
+          </a>
+
+          <!-- Paytm -->
+          <a id="upi-btn-paytm" href="#"
+            onclick="handleUpiClick(event,'paytm')"
+            ontouchstart="this.style.opacity='0.8'" ontouchend="this.style.opacity='1'"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+              padding:14px 10px;border-radius:12px;text-decoration:none;cursor:pointer;
+              background:#1a1f2e;border:1.5px solid rgba(255,255,255,0.1);
+              transition:border-color 0.2s,background 0.2s;-webkit-tap-highlight-color:transparent;">
+            <img src="assets/images/paytm-icon.svg" alt="Paytm" style="height:32px;object-fit:contain;"/>
+            <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white);">Paytm</span>
+          </a>
+
+          <!-- Any UPI App (generic fallback) -->
+          <a id="upi-btn-generic" href="#"
+            onclick="handleUpiClick(event,'generic')"
+            ontouchstart="this.style.opacity='0.8'" ontouchend="this.style.opacity='1'"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+              padding:14px 10px;border-radius:12px;text-decoration:none;cursor:pointer;
+              background:#1a1f2e;border:1.5px solid rgba(255,255,255,0.1);
+              transition:border-color 0.2s,background 0.2s;-webkit-tap-highlight-color:transparent;">
+            <div style="height:32px;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;">💳</div>
+            <span style="font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--white);">Other UPI</span>
+          </a>
         </div>
 
-        <!-- The Big UPI Button -->
-        <!-- iOS FIX: <a href="upi://..."> is the ONLY reliable way to open UPI apps on iOS.
-             href is set to the real upi:// link by showPaymentScreen() before this is shown.
-             onclick still handles the return-nudge detection (Android + visibility tracking).
-             Do NOT change this back to a <button> — buttons break iOS UPI deep links. -->
-        <a id="upi-pay-btn" href="#"
-          onclick="handleUpiClick(event)"
-          ontouchstart="this.style.transform='scale(0.97)'"
-          ontouchend="this.style.transform='scale(1)'"
-          style="
-          display:flex;align-items:center;justify-content:center;gap:10px;
-          width:100%;padding:15px 20px;box-sizing:border-box;
-          background:linear-gradient(135deg,#38bdf8 0%,#6366f1 100%);
-          color:#fff;font-family:var(--font-cond);font-size:17px;font-weight:900;
-          letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;
-          border-radius:12px;cursor:pointer;
-          box-shadow:0 4px 20px rgba(56,189,248,0.35),0 0 0 1px rgba(56,189,248,0.2);
-          transition:transform 0.15s,box-shadow 0.15s;
-          -webkit-tap-highlight-color:transparent;
-        ">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-          </svg>
-          Pay Now via UPI
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-
-        <p style="font-size:11px;color:var(--silver);text-align:center;margin:8px 0 0;line-height:1.5;">
-          Tap to auto-open PhonePe / GPay / Paytm with amount pre-filled
+        <p style="font-size:11px;color:var(--silver);text-align:center;margin:4px 0 0;line-height:1.5;">
+          Tap your preferred app — amount is pre-filled automatically
         </p>
 
         <!-- Fallback message (hidden by default, shown if no UPI app found) -->
         <div id="upi-fallback-msg" style="display:none;margin-top:10px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:10px 12px;font-size:12px;color:#fbbf24;text-align:center;line-height:1.5;">
-          ⚠️ No UPI app found on this device. Please use the QR code method below.
+          ⚠️ That UPI app may not be installed. Please try another app above or use the QR method below.
         </div>
 
         <!-- Switch-back nudge (hidden by default, shown when user returns from UPI app) -->
@@ -266,8 +283,8 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:22px;line-height:1;">🎉</span>
             <div>
-              <div style="font-family:var(--font-cond);font-size:13px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;color:#22c55e;margin-bottom:3px;">Payment Done in UPI App?</div>
-              <div style="font-size:12px;color:rgba(240,246,252,0.8);line-height:1.5;">You're back! Now upload your payment screenshot below to confirm your order.</div>
+              <div style="font-family:var(--font-cond);font-size:13px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;color:#22c55e;margin-bottom:3px;">Payment Done?</div>
+              <div style="font-size:12px;color:rgba(240,246,252,0.8);line-height:1.5;">Now upload your payment screenshot below to confirm your order.</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;background:rgba(34,197,94,0.1);border-radius:8px;padding:8px 12px;width:100%;box-sizing:border-box;">
