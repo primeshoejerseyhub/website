@@ -49,13 +49,6 @@ function buildWhatsAppMessage(orderData) {
   );
 }
 
-function autoOpenWhatsApp(orderData) {
-  const msg = buildWhatsAppMessage(orderData);
-  const url = `https://wa.me/${WA_NUMBER}?text=${msg}`;
-  // Small delay so success screen renders first
-  setTimeout(() => { window.open(url, "_blank"); }, 1200);
-}
-
 function generateOrderId() {
   return "PSJH-" + Date.now().toString(36).toUpperCase() + "-" + Math.floor(1000 + Math.random() * 9000);
 }
@@ -65,12 +58,14 @@ function generateOrderId() {
 // Some UPI apps on iOS (PhonePe, GPay) reject amounts without decimals.
 // FIX: all query param values are individually encodeURIComponent'd.
 function generateUpiLink(amount, orderId) {
-  const pa = encodeURIComponent(UPI_ID);
-  const pn = encodeURIComponent(STORE_NAME);
-  const am = Number(amount).toFixed(2);          // "2499.00" — required by iOS UPI apps
+  // CRITICAL: pa (VPA/UPI ID) must NOT be encoded — the "@" must stay as "@".
+  // encodeURIComponent turns "8210647493@kotak811" into "8210647493%40kotak811"
+  // which iOS UPI apps (PhonePe, GPay, Paytm) cannot parse — they fail silently.
+  const pa = UPI_ID;                              // raw VPA — never encode this
+  const pn = encodeURIComponent(STORE_NAME);      // encode spaces in store name
+  const am = Number(amount).toFixed(2);           // "2499.00" — 2 decimals required
   const tn = encodeURIComponent("Order " + orderId);
-  const cu = "INR";
-  return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=${cu}&tn=${tn}`;
+  return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
 }
 
 // ---- payViaUpi — THE PERMANENT iOS + ANDROID FIX ----
@@ -125,11 +120,14 @@ window.payViaUpi = function() {
     }
   };
 
-  // iOS takes longer to switch apps — use 4s timeout
-  // If page never goes hidden → no UPI app found
+  // If page never goes hidden within 4s → no UPI app is installed.
+  // CRITICAL FIX: also check document.hidden — if the page IS hidden at
+  // timer time, the user is currently inside a UPI app paying. Do NOT
+  // show "no app found" or reset the button in that case.
   const noAppTimer = setTimeout(() => {
     document.removeEventListener("visibilitychange", onVisibility);
-    if (!appOpened) {
+    if (!appOpened && !document.hidden) {
+      // Page never went hidden AND user hasn't returned → truly no UPI app
       showUpiNotFoundMessage();
       if (btn) {
         btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
@@ -137,6 +135,11 @@ window.payViaUpi = function() {
         btn.style.boxShadow = "";
         btn.style.fontSize = "";
       }
+    } else if (!appOpened && document.hidden) {
+      // Page IS hidden — user is in UPI app right now.
+      // Remove the timer listener but keep the visibility listener active
+      // so we still catch when the user returns.
+      document.addEventListener("visibilitychange", onVisibility);
     }
   }, 4000);
 
