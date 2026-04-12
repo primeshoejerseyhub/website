@@ -53,59 +53,61 @@ function generateOrderId() {
   return "PSJH-" + Date.now().toString(36).toUpperCase() + "-" + Math.floor(1000 + Math.random() * 9000);
 }
 
-// ---- Generate UPI Deep Link ----
-// FIX: amount must be formatted as fixed 2 decimal places (e.g. "2499.00")
-// Some UPI apps on iOS (PhonePe, GPay) reject amounts without decimals.
-// FIX: all query param values are individually encodeURIComponent'd.
+// ---- Generate UPI deep link ----
+// Rules:
+//   pa  = raw VPA — NEVER encode, @ must stay as @
+//   pn  = store name — encode spaces
+//   am  = amount with exactly 2 decimal places e.g. "2499.00"
+//   tn  = short note — encode
+//   cu  = INR always
 function generateUpiLink(amount, orderId) {
-  // CRITICAL: pa (VPA/UPI ID) must NOT be encoded — the "@" must stay as "@".
-  // encodeURIComponent turns "8210647493@kotak811" into "8210647493%40kotak811"
-  // which iOS UPI apps (PhonePe, GPay, Paytm) cannot parse — they fail silently.
-  const pa = UPI_ID;                              // raw VPA — never encode this
-  const pn = encodeURIComponent(STORE_NAME);      // encode spaces in store name
-  const am = Number(amount).toFixed(2);           // "2499.00" — 2 decimals required
+  const pa = UPI_ID;
+  const pn = encodeURIComponent(STORE_NAME);
+  const am = Number(amount).toFixed(2);
   const tn = encodeURIComponent("Order " + orderId);
   return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
 }
 
-// ---- payViaUpi — THE PERMANENT iOS + ANDROID FIX ----
+// ---- handleUpiClick — called from onclick on the <a> tag ----
 //
-// ROOT CAUSE of iOS failure:
-//   The original code used a hidden <iframe> with iframe.src = "upi://..."
-//   iOS Safari COMPLETELY BLOCKS custom URL schemes in iframes — silently, no error.
-//   The try/catch fallback never fired because no exception was thrown.
+// THE DEFINITIVE iOS FIX:
 //
-// THE CORRECT SOLUTION for iOS:
-//   Use window.location.href = upiLink, called SYNCHRONOUSLY inside a direct
-//   user gesture (click/tap handler). This is the ONLY method iOS Safari allows
-//   for opening custom URL schemes from a web page.
-//   iOS does NOT navigate the page away — it hands off to the UPI app and
-//   Safari stays open in the background. When user returns, the page is intact.
+// WHAT FAILED:
+//   1. iframe.src = "upi://..."   → iOS silently blocks, no error thrown
+//   2. window.location.href set inside window.payViaUpi() called via onclick
+//      from a <button> in a type="module" script → iOS breaks the user
+//      gesture chain through module scope, so upi:// is blocked
 //
-// Android:
-//   window.location.href also works on Android. We no longer need the iframe.
-//   Both platforms now use the same code path.
+// WHAT WORKS ON iOS (only option):
+//   An <a href="upi://..."> that the user physically taps.
+//   iOS reads the href AT tap time and opens the registered UPI app handler.
+//   The href must be set BEFORE the page is shown (in showPaymentScreen).
+//   onclick on the <a> can still run JS for UI feedback — but the href
+//   is what actually opens the app, not any JS navigation call.
 //
-window.payViaUpi = function() {
-  if (!_pendingOrderMeta) {
-    if (window.showToast) showToast("Please place your order first.", "error");
+// This works on Android too — Android follows <a href="upi://"> natively.
+//
+window.handleUpiClick = function(e) {
+  const btn = document.getElementById("upi-pay-btn");
+
+  // If href is still "#" — order not placed yet, block navigation
+  if (!btn || btn.getAttribute("href") === "#" || !btn.getAttribute("href").startsWith("upi://")) {
+    e.preventDefault();
+    if (window.showToast) showToast("Please fill your details and place the order first.", "error");
     return;
   }
 
-  const { orderId, total } = _pendingOrderMeta;
-  const upiLink = generateUpiLink(total, orderId);
-  const btn = document.getElementById("upi-pay-btn");
+  // href is already set to upi://... — let the browser follow it natively (don't preventDefault)
+  // iOS will open the UPI app picker. Android will open app chooser.
 
-  // Track whether user actually left the page (app opened)
-  let appOpened = false;
   let wasHidden = false;
+  let appOpened = false;
 
-  // Listen for page visibility — fires when user switches to UPI app and back
+  // Watch for user returning from UPI app
   const onVisibility = () => {
     if (document.hidden) {
-      wasHidden = true;  // user left the page (UPI app opened)
+      wasHidden = true;
     } else if (wasHidden) {
-      // user came BACK from the UPI app
       wasHidden = false;
       appOpened = true;
       clearTimeout(noAppTimer);
@@ -120,14 +122,11 @@ window.payViaUpi = function() {
     }
   };
 
-  // If page never goes hidden within 4s → no UPI app is installed.
-  // CRITICAL FIX: also check document.hidden — if the page IS hidden at
-  // timer time, the user is currently inside a UPI app paying. Do NOT
-  // show "no app found" or reset the button in that case.
+  // Only show "no app" if page was NEVER hidden (user never left — means no app opened)
+  // If page IS hidden when timer fires, user is inside the UPI app right now — do NOT reset
   const noAppTimer = setTimeout(() => {
     document.removeEventListener("visibilitychange", onVisibility);
     if (!appOpened && !document.hidden) {
-      // Page never went hidden AND user hasn't returned → truly no UPI app
       showUpiNotFoundMessage();
       if (btn) {
         btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
@@ -136,25 +135,23 @@ window.payViaUpi = function() {
         btn.style.fontSize = "";
       }
     } else if (!appOpened && document.hidden) {
-      // Page IS hidden — user is in UPI app right now.
-      // Remove the timer listener but keep the visibility listener active
-      // so we still catch when the user returns.
+      // Still in UPI app — re-attach listener to catch return
       document.addEventListener("visibilitychange", onVisibility);
     }
   }, 4000);
 
   document.addEventListener("visibilitychange", onVisibility);
 
-  // Show loading state on button
+  // Visual feedback — show "opening" state
   if (btn) {
     btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
   }
+};
 
-  // THE FIX: window.location.href works on BOTH iOS and Android.
-  // Must be called synchronously inside the click handler (which this is).
-  // iOS Safari treats this as a user-initiated navigation and allows upi:// to open.
-  // The page is NOT lost — iOS suspends Safari and opens the UPI app.
-  window.location.href = upiLink;
+// Keep payViaUpi as a no-op alias so any old references don't crash
+window.payViaUpi = function() {
+  const btn = document.getElementById("upi-pay-btn");
+  if (btn) btn.click();
 };
 
 function showUpiNotFoundMessage() {
@@ -168,13 +165,11 @@ function showUpiNotFoundMessage() {
 function showSwitchBackNudge() {
   const fallback = document.getElementById("upi-fallback-msg");
   if (fallback) fallback.style.display = "none";
-
   const nudge = document.getElementById("upi-switchback-nudge");
   if (nudge) {
     nudge.style.display = "flex";
     nudge.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
-
   setTimeout(() => {
     document.getElementById("screenshot-file-input")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, 900);
@@ -390,11 +385,11 @@ function showPaymentScreen({ orderId, name, total }) {
 
   safeHref("track-btn", `tracking.html?id=${orderId}`);
 
-  // Pre-store the UPI link on the button as a data attribute for reference
-  // The actual navigation happens via window.location.href in payViaUpi()
+  // Set the upi:// href on the anchor BEFORE showing payment screen.
+  // iOS reads href at tap time — it must be set in advance, not during the click.
   const upiPayBtn = document.getElementById("upi-pay-btn");
   if (upiPayBtn) {
-    upiPayBtn.setAttribute("data-upi-link", generateUpiLink(total, orderId));
+    upiPayBtn.href = generateUpiLink(total, orderId);
   }
 
   // Hide fallback message initially
