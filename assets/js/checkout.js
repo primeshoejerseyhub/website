@@ -75,24 +75,26 @@ window.payViaUpi = function() {
   const btn = document.getElementById("upi-pay-btn");
 
   let appOpened = false;
+  let wasHidden = false;
+
+  // Animate button immediately to "opening" state
+  if (btn) {
+    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+  }
 
   // Phase 1: detect if UPI app opened (page goes hidden)
+  // Only mark appOpened if the page was ACTUALLY hidden (not just a dialog flash)
   const onHidden = () => {
     if (document.hidden) {
+      wasHidden = true;
+    } else if (wasHidden) {
+      // Page came back from being truly hidden — user returned from UPI app
+      wasHidden = false;
       appOpened = true;
       clearTimeout(noAppTimer);
       document.removeEventListener("visibilitychange", onHidden);
-      // Phase 2: when user switches BACK, show the nudge
-      document.addEventListener("visibilitychange", onReturn);
-    }
-  };
-
-  // Phase 2: user returned from UPI app to our page
-  const onReturn = () => {
-    if (!document.hidden) {
-      document.removeEventListener("visibilitychange", onReturn);
       showSwitchBackNudge();
-      // Turn button green to signal "payment done, now upload"
+      // Turn button green
       if (btn) {
         btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
         btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
@@ -102,20 +104,38 @@ window.payViaUpi = function() {
     }
   };
 
-  // If page never goes hidden within 1.5s — no UPI app installed
+  // If page never goes fully hidden within 2s — no UPI app installed (desktop or no app)
   const noAppTimer = setTimeout(() => {
     document.removeEventListener("visibilitychange", onHidden);
-    if (!appOpened) showUpiNotFoundMessage();
-  }, 1500);
+    if (!appOpened) {
+      // Restore button to original state
+      if (btn) {
+        btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+        btn.style.background = "";
+        btn.style.boxShadow = "";
+        btn.style.fontSize = "";
+      }
+      showUpiNotFoundMessage();
+    }
+  }, 2000);
 
   document.addEventListener("visibilitychange", onHidden);
 
-  // Trigger UPI deep link
-  window.location.href = upiLink;
-
-  // Animate button to "opening" state
-  if (btn) {
-    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+  // Use a hidden iframe to trigger UPI deep link WITHOUT navigating the page
+  // This prevents the browser from navigating away and avoids the WhatsApp button
+  // being accidentally triggered or the page reloading
+  let iframe = document.getElementById("_upi_trigger_frame");
+  if (!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.id = "_upi_trigger_frame";
+    iframe.style.cssText = "display:none;width:0;height:0;border:none;position:absolute;top:-9999px;";
+    document.body.appendChild(iframe);
+  }
+  try {
+    iframe.src = upiLink;
+  } catch(e) {
+    // Fallback for browsers that block iframe src for custom schemes
+    window.location.href = upiLink;
   }
 };
 
@@ -440,7 +460,7 @@ window.uploadAndConfirmOrder = async function() {
 
     if (window.showToast) showToast("Order Placed Successfully! ✓");
 
-    // No automatic WhatsApp message here — customer already sent it when clicking Pay via WhatsApp
+    // No automatic WhatsApp message here — customer already sent it via the WhatsApp button
 
   } catch (err) {
     console.error("[Checkout] Upload/save error:", err);
@@ -459,7 +479,7 @@ function showSuccessScreen({ orderId, name, total }) {
   const trackBtn = document.getElementById("success-track-btn");
   if (trackBtn) trackBtn.href = `tracking.html?id=${orderId}`;
 
-  // Set manual WhatsApp fallback link with the same clean format
+  // Set manual WhatsApp fallback link with clean format
   const waLink = document.getElementById("wa-manual-link");
   if (waLink && _pendingOrderData) {
     const d = _pendingOrderData;
