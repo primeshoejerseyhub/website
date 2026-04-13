@@ -141,6 +141,8 @@ let allReviews = {};
 let currentOrderId = null;
 let editingProductId = null;
 let uploadedImageUrls = [];
+let _currentImageUrls = [];  // confirmed image URLs for current product form
+let _pendingFiles = [];       // new File objects not yet uploaded
 
 function showToast(msg, type = "success") {
   let c = document.getElementById("toast-container");
@@ -443,33 +445,107 @@ window.renderAdminProducts = function () {
 };
 
 // ============================================
-// SECTION 9: IMAGE UPLOAD
+// SECTION 9: IMAGE MANAGEMENT
 // ============================================
-window.handleImageFileSelect = function (input) {
-  const files = Array.from(input.files).slice(0, 5);
+//
+// _currentImageUrls  = the "committed" list of image URLs for this product
+//                      (pre-populated from existing product when editing)
+// _pendingFiles      = new File objects selected by the user, not yet uploaded
+//
+// Both are merged at save time: existing URLs + newly uploaded files → final imageUrls
+//
+
+function renderImageManager() {
   const strip = document.getElementById("pf-img-preview-strip");
-  const status = document.getElementById("pf-img-upload-status");
-  if (!strip || !status) return;
+  if (!strip) return;
 
-  strip.innerHTML = "";
-  uploadedImageUrls = [];
+  const allCount = _currentImageUrls.length + _pendingFiles.length;
+  let html = "";
 
-  if (!files.length) { status.textContent = ""; return; }
-
-  status.textContent = `${files.length} file(s) selected — will upload when you save.`;
-  status.style.color = "var(--silver)";
-
-  files.forEach((file) => {
-    const url = URL.createObjectURL(file);
-    strip.insertAdjacentHTML("beforeend",
-      `<img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border-solid);" />`
-    );
+  // Render confirmed URL images with remove button
+  _currentImageUrls.forEach((url, idx) => {
+    html += `
+      <div style="position:relative;flex-shrink:0;">
+        <img src="${url}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border-solid);display:block;"/>
+        <button onclick="removeExistingImage(${idx})" title="Remove"
+          style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
+          background:#f85149;border:none;color:#fff;cursor:pointer;font-size:11px;line-height:1;
+          display:flex;align-items:center;justify-content:center;font-weight:700;z-index:2;">✕</button>
+        <div style="font-family:var(--font-cond);font-size:9px;text-align:center;margin-top:3px;color:var(--silver);">#${idx+1}</div>
+      </div>`;
   });
 
-  input._selectedFiles = files;
-  const urlField = document.getElementById("pf-img");
-  if (urlField) urlField.value = "";
+  // Render pending new files (not yet uploaded) with remove button
+  _pendingFiles.forEach((file, idx) => {
+    const objectUrl = file._previewUrl || (file._previewUrl = URL.createObjectURL(file));
+    html += `
+      <div style="position:relative;flex-shrink:0;">
+        <img src="${objectUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid rgba(56,189,248,0.5);display:block;"/>
+        <button onclick="removePendingFile(${idx})" title="Remove"
+          style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
+          background:#f85149;border:none;color:#fff;cursor:pointer;font-size:11px;line-height:1;
+          display:flex;align-items:center;justify-content:center;font-weight:700;z-index:2;">✕</button>
+        <div style="font-family:var(--font-cond);font-size:9px;text-align:center;margin-top:3px;color:var(--blue);">new</div>
+      </div>`;
+  });
+
+  strip.innerHTML = html;
+
+  // Update status text
+  const statusEl = document.getElementById("pf-img-upload-status");
+  if (statusEl) {
+    if (allCount === 0) {
+      statusEl.textContent = "No images yet. Upload files or add URLs below.";
+      statusEl.style.color = "var(--silver)";
+    } else {
+      const parts = [];
+      if (_currentImageUrls.length) parts.push(`${_currentImageUrls.length} saved`);
+      if (_pendingFiles.length) parts.push(`${_pendingFiles.length} new (will upload on save)`);
+      statusEl.textContent = `${allCount} image(s): ${parts.join(" · ")}`;
+      statusEl.style.color = _pendingFiles.length ? "var(--blue)" : "var(--silver)";
+    }
+  }
   updatePreview();
+}
+
+window.removeExistingImage = function(idx) {
+  _currentImageUrls.splice(idx, 1);
+  renderImageManager();
+};
+
+window.removePendingFile = function(idx) {
+  _pendingFiles.splice(idx, 1);
+  renderImageManager();
+};
+
+window.handleImageFileSelect = function(input) {
+  const newFiles = Array.from(input.files);
+  const totalAfter = _currentImageUrls.length + _pendingFiles.length + newFiles.length;
+  if (totalAfter > 8) {
+    showToast(`Max 8 images per product. You already have ${_currentImageUrls.length + _pendingFiles.length}.`, "error");
+    input.value = "";
+    return;
+  }
+  _pendingFiles.push(...newFiles);
+  input.value = ""; // reset so same file can be re-added if needed
+  renderImageManager();
+};
+
+window.addImageUrl = function() {
+  const input = document.getElementById("pf-img-url-add");
+  if (!input) return;
+  const url = input.value.trim();
+  if (!url || !url.startsWith("http")) {
+    showToast("Please enter a valid image URL starting with http.", "error");
+    return;
+  }
+  if (_currentImageUrls.length + _pendingFiles.length >= 8) {
+    showToast("Max 8 images per product.", "error");
+    return;
+  }
+  _currentImageUrls.push(url);
+  input.value = "";
+  renderImageManager();
 };
 
 // ============================================
@@ -496,24 +572,23 @@ window.saveProduct = async function () {
   if (saveBtn) saveBtn.textContent = "⏳ Uploading images...";
 
   try {
-    const fileInput = document.getElementById("pf-img-files");
-    let imageUrls = uploadedImageUrls.length ? [...uploadedImageUrls] : [];
-
-    if (fileInput?._selectedFiles?.length) {
+    // Upload any pending new files to Cloudinary
+    let newlyUploadedUrls = [];
+    if (_pendingFiles.length) {
       const statusEl = document.getElementById("pf-img-upload-status");
-      if (statusEl) { statusEl.textContent = "Uploading to Cloudinary..."; statusEl.style.color = "var(--blue)"; }
-      imageUrls = await uploadMultipleToCloudinary(
-        fileInput._selectedFiles, "psjh_products",
-        (done, total) => { if (statusEl) statusEl.textContent = `Uploaded ${done} / ${total}...`; }
+      if (statusEl) { statusEl.textContent = "Uploading new images to Cloudinary..."; statusEl.style.color = "var(--blue)"; }
+      newlyUploadedUrls = await uploadMultipleToCloudinary(
+        _pendingFiles, "psjh_products",
+        (done, total) => { if (statusEl) statusEl.textContent = `Uploaded ${done} / ${total} new images...`; }
       );
-      uploadedImageUrls = imageUrls;
     }
 
+    // Final image list = existing confirmed URLs + newly uploaded
+    let imageUrls = [..._currentImageUrls, ...newlyUploadedUrls];
+
+    // Last fallback — should rarely happen
     if (!imageUrls.length) {
-      const urlField = document.getElementById("pf-img");
-      if (urlField?.value.trim()) {
-        imageUrls = [urlField.value.trim()];
-      } else if (editingProductId) {
+      if (editingProductId) {
         const existing = allProducts.find((p) => p.id === editingProductId);
         imageUrls = existing?.images || ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80"];
       } else {
@@ -562,13 +637,14 @@ window.editProduct = function (id) {
   const p = allProducts.find((x) => x.id === id);
   if (!p) return;
   editingProductId = id;
+  _currentImageUrls = [...(p.images || [])];
+  _pendingFiles = [];
   uploadedImageUrls = [];
 
   const setVal = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ""; };
   setVal("pf-name", p.name); setVal("pf-cat", p.category); setVal("pf-brand", p.brand);
   setVal("pf-price", p.price); setVal("pf-original", p.originalPrice); setVal("pf-stock", p.stock);
   setVal("pf-badge", p.badge || ""); setVal("pf-featured", p.featured ? "true" : "false");
-  setVal("pf-img", (p.images || [])[0] || "");
   setVal("pf-sizes", (p.sizes || []).join(", ")); setVal("pf-desc", p.description || "");
 
   const labelEl = document.getElementById("pf-section-label");
@@ -578,16 +654,12 @@ window.editProduct = function (id) {
   if (titleEl) titleEl.textContent = "EDIT PRODUCT";
   if (saveTextEl) saveTextEl.textContent = "💾 Update Product";
 
-  const strip = document.getElementById("pf-img-preview-strip");
-  if (strip) strip.innerHTML = (p.images || []).map((src) =>
-    `<img src="${src}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border-solid);" />`
-  ).join("");
-
-  const statusEl = document.getElementById("pf-img-upload-status");
-  if (statusEl) { statusEl.textContent = `${(p.images || []).length} existing image(s). Upload new files to replace.`; statusEl.style.color = "var(--silver)"; }
-
+  const urlAddInput = document.getElementById("pf-img-url-add");
+  if (urlAddInput) urlAddInput.value = "";
   const fileInput = document.getElementById("pf-img-files");
-  if (fileInput) { fileInput.value = ""; fileInput._selectedFiles = []; }
+  if (fileInput) fileInput.value = "";
+
+  renderImageManager();
 
   const addNavBtn = document.querySelectorAll(".admin-nav-item")[3];
   showSection("add-product", addNavBtn);
@@ -612,17 +684,19 @@ window.deleteProduct = async function (id) {
 window.resetProductForm = function () {
   editingProductId = null;
   uploadedImageUrls = [];
-  ["pf-name","pf-price","pf-original","pf-stock","pf-img","pf-sizes","pf-desc"].forEach((id) => {
+  _currentImageUrls = [];
+  _pendingFiles = [];
+  ["pf-name","pf-price","pf-original","pf-stock","pf-sizes","pf-desc"].forEach((id) => {
     const el = document.getElementById(id); if (el) el.value = "";
   });
   ["pf-cat","pf-brand","pf-badge"].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
   const featEl = document.getElementById("pf-featured"); if (featEl) featEl.value = "false";
-  const strip = document.getElementById("pf-img-preview-strip"); if (strip) strip.innerHTML = "";
-  const status = document.getElementById("pf-img-upload-status"); if (status) { status.textContent = ""; status.style.color = "var(--silver)"; }
-  const fileInput = document.getElementById("pf-img-files"); if (fileInput) { fileInput.value = ""; fileInput._selectedFiles = []; }
+  const urlAddInput = document.getElementById("pf-img-url-add"); if (urlAddInput) urlAddInput.value = "";
+  const fileInput = document.getElementById("pf-img-files"); if (fileInput) fileInput.value = "";
   const labelEl = document.getElementById("pf-section-label"); if (labelEl) labelEl.textContent = "New Product";
   const titleEl = document.getElementById("pf-section-title"); if (titleEl) titleEl.textContent = "ADD PRODUCT";
   const saveTextEl = document.getElementById("pf-save-text"); if (saveTextEl) saveTextEl.textContent = "💾 Save Product";
+  renderImageManager();
   updatePreview();
 };
 
@@ -632,10 +706,11 @@ window.updatePreview = function () {
   const name = document.getElementById("pf-name")?.value || "";
   const price = document.getElementById("pf-price")?.value || "";
   const brand = document.getElementById("pf-brand")?.value || "";
-  const imgEl = document.getElementById("pf-img");
-  const strip = document.getElementById("pf-img-preview-strip");
-  let imgSrc = imgEl?.value || "";
-  if (!imgSrc && strip) { const fi = strip.querySelector("img"); if (fi) imgSrc = fi.src; }
+
+  // Get preview image from new state variables
+  let imgSrc = _currentImageUrls[0] || "";
+  if (!imgSrc && _pendingFiles.length) imgSrc = _pendingFiles[0]._previewUrl || "";
+
   if (!name && !price) {
     previewCard.innerHTML = `<div style="aspect-ratio:1;background:var(--dark-4);display:flex;align-items:center;justify-content:center;color:var(--silver);font-size:2rem;">🖼️</div><div style="padding:12px;"><div style="font-family:var(--font-cond);font-size:11px;color:var(--silver);">Fill form to preview</div></div>`;
     return;
@@ -1202,7 +1277,7 @@ function renderBulkUpload() {
         2. Upload your product images (drag &amp; drop)<br/>
         3. Click any image → copy the <strong>URL</strong> (ends in .jpg / .png / .webp)<br/>
         4. Paste that URL into the <code style="background:var(--dark-4);padding:1px 5px;border-radius:3px;">image1</code> column of your CSV<br/>
-        5. For multiple images per product, use <code style="background:var(--dark-4);padding:1px 5px;border-radius:3px;">image2</code>, <code style="background:var(--dark-4);padding:1px 5px;border-radius:3px;">image3</code> columns
+        5. For multiple images per product, use <code style="background:var(--dark-4);padding:1px 5px;border-radius:3px;">image2</code> through <code style="background:var(--dark-4);padding:1px 5px;border-radius:3px;">image6</code> columns (up to 6 images)
       </div>
     </div>
 
@@ -1219,7 +1294,7 @@ function renderBulkUpload() {
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
           <thead>
             <tr style="background:var(--dark-3);">
-              ${["name","category","brand","price","originalPrice","stock","badge","featured","sizes","description","image1","image2","image3"].map(h =>
+              ${["name","category","brand","price","originalPrice","stock","badge","featured","sizes","description","image1","image2","image3","image4","image5","image6"].map(h =>
                 `<th style="padding:8px 10px;text-align:left;font-family:var(--font-cond);font-weight:700;letter-spacing:0.05em;color:var(--blue);border-bottom:1px solid var(--border-solid);white-space:nowrap;">${h}</th>`
               ).join("")}
             </tr>
@@ -1247,7 +1322,7 @@ function renderBulkUpload() {
           ["sizes","comma-separated: 6,7,8,9"],
           ["price / originalPrice","numbers only, no ₹"],
           ["stock","number of units available"],
-          ["image1-3","full Cloudinary URL or leave blank"],
+          ["image1-6","full Cloudinary URL or leave blank (up to 6 images)"],
         ].map(([k,v]) => `
           <div style="background:var(--dark-3);border-radius:var(--radius-sm);padding:8px 10px;border:1px solid var(--border-solid);">
             <div style="font-family:var(--font-cond);font-weight:700;color:var(--blue);font-size:10px;margin-bottom:2px;">${k}</div>
@@ -1332,10 +1407,10 @@ function renderBulkUpload() {
 
 // ---- CSV Template Download ----
 window.downloadCSVTemplate = function() {
-  const headers = ["name","category","brand","price","originalPrice","stock","badge","featured","sizes","description","image1","image2","image3"];
-  const example1 = ["Nike Air Zoom Mercurial","shoes","Nike","2499","3499","15","hot","true","6,7,8,9,10","Premium lightweight football boots for maximum speed.","https://res.cloudinary.com/your-cloud/image/upload/example.jpg","",""];
-  const example2 = ["Adidas Copa Pure","shoes","Adidas","1999","2999","8","","false","7,8,9,10","Classic leather upper with supreme touch.","https://res.cloudinary.com/your-cloud/image/upload/example2.jpg","",""];
-  const example3 = ["Brazil 2026 Home Jersey","jersey","Nike","1299","1799","20","new","true","S,M,L,XL,XXL","Official Brazil 2026 home jersey.","https://res.cloudinary.com/your-cloud/image/upload/example3.jpg","",""];
+  const headers = ["name","category","brand","price","originalPrice","stock","badge","featured","sizes","description","image1","image2","image3","image4","image5","image6"];
+  const example1 = ["Nike Air Zoom Mercurial","shoes","Nike","2499","3499","15","hot","true","6,7,8,9,10","Premium lightweight football boots for maximum speed.","https://res.cloudinary.com/your-cloud/image/upload/example.jpg","","","","",""];
+  const example2 = ["Adidas Copa Pure","shoes","Adidas","1999","2999","8","","false","7,8,9,10","Classic leather upper with supreme touch.","https://res.cloudinary.com/your-cloud/image/upload/example2.jpg","","","","",""];
+  const example3 = ["Brazil 2026 Home Jersey","jersey","Nike","1299","1799","20","new","true","S,M,L,XL,XXL","Official Brazil 2026 home jersey.","https://res.cloudinary.com/your-cloud/image/upload/example3.jpg","","","","",""];
   const csv = [headers, example1, example2, example3].map(row => row.map(v => `"${v}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const a = document.createElement("a");
@@ -1530,7 +1605,7 @@ window.runBulkImport = async function() {
       if (progressLabel) progressLabel.textContent = `Importing ${i + 1} of ${validRows.length}: "${row.name}"`;
 
       try {
-        const images = [row.image1, row.image2, row.image3].filter(u => u && u.startsWith("http"));
+        const images = [row.image1, row.image2, row.image3, row.image4, row.image5, row.image6].filter(u => u && u.startsWith("http"));
 
         // FIX: sizes — handle both comma inside quotes and plain comma-separated
         const sizesRaw = (row.sizes || "").replace(/^"|"$/g, "");
