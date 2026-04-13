@@ -151,15 +151,17 @@
 <!-- Shop Body -->
 <div class="container section-pad">
   <!-- Filter chips -->
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;" id="filter-chips">
-    <button class="filter-chip active" onclick="applyFilter('all',this)">All</button>
-    <button class="filter-chip" onclick="applyFilter('nike',this)">Nike</button>
-    <button class="filter-chip" onclick="applyFilter('adidas',this)">Adidas</button>
-    <button class="filter-chip" onclick="applyFilter('mizuno',this)">Mizuno</button>
-    <button class="filter-chip" onclick="applyFilter('jersey',this)">👕 Jerseys</button>
-    <button class="filter-chip" onclick="applyFilter('shoes',this)">👟 Studs</button>
-    <button class="filter-chip" onclick="applyFilter('accessories',this)">⚽ Accessories</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;" id="filter-chips">
+    <button class="filter-chip active" data-filter="all"         onclick="applyFilter('all',this)">All</button>
+    <button class="filter-chip"        data-filter="nike"        onclick="applyFilter('nike',this)">Nike</button>
+    <button class="filter-chip"        data-filter="adidas"      onclick="applyFilter('adidas',this)">Adidas</button>
+    <button class="filter-chip"        data-filter="mizuno"      onclick="applyFilter('mizuno',this)">Mizuno</button>
+    <button class="filter-chip"        data-filter="jersey"      onclick="applyFilter('jersey',this)">👕 Jerseys</button>
+    <button class="filter-chip"        data-filter="shoes"       onclick="applyFilter('shoes',this)">👟 Studs</button>
+    <button class="filter-chip"        data-filter="accessories" onclick="applyFilter('accessories',this)">⚽ Accessories</button>
   </div>
+  <!-- Active filter tags (Myntra-style) — shown when any filter is active -->
+  <div id="active-filter-tags" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;"></div>
 
   <div class="shop-layout">
     <!-- Sidebar -->
@@ -189,8 +191,8 @@
       <div class="filter-section">
         <div class="filter-title">Price Range</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input type="number" id="price-min" placeholder="Min ₹" class="form-input" style="padding:9px;" value="0" onchange="applyFromSidebar()"/>
-          <input type="number" id="price-max" placeholder="Max ₹" class="form-input" style="padding:9px;" value="5000" onchange="applyFromSidebar()"/>
+          <input type="number" id="price-min" placeholder="Min ₹" class="form-input" style="padding:9px;" value="" onchange="applyFromSidebar()"/>
+          <input type="number" id="price-max" placeholder="Max ₹ (no limit)" class="form-input" style="padding:9px;" value="" onchange="applyFromSidebar()"/>
         </div>
       </div>
       <div class="filter-section">
@@ -218,6 +220,7 @@
         </div>
       </div>
       <div class="grid-products" id="shop-products-grid"></div>
+      <div id="shop-pagination" style="display:none;"></div>
       <div id="no-results" style="display:none;text-align:center;padding:80px 20px;">
         <div style="font-size:3rem;margin-bottom:12px;">🔍</div>
         <h3 style="font-family:var(--font-cond);font-size:1.3rem;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">No Products Found</h3>
@@ -291,112 +294,447 @@ Kolkata, West Bengal, India
 <script type="module" src="assets/js/cart.js"></script>
 <script type="module" src="assets/js/app.js"></script>
 <script>
-let activeFilter = 'all', activeBrands = [], activeSearch = '', priceMin = 0, priceMax = 5000, sortMode = 'featured', stockFilter = 'all';
+// ============================================================
+// SHOP FILTER ENGINE — Unified, URL-aware, Myntra-style
+// ============================================================
+// Single source of truth: _state object.
+// All reads go through window.PRODUCTS (set after Firebase loads).
+// Never references a bare PRODUCTS variable.
+// ============================================================
 
-function getFiltered() {
-  let r = [...PRODUCTS];
-  const brands = ['nike','adidas','mizuno','jordan'];
-  if (activeFilter !== 'all') {
-    if (brands.includes(activeFilter)) r = r.filter(p => p.brand.toLowerCase() === activeFilter);
-    else r = r.filter(p => p.category === activeFilter);
+const _state = {
+  cat:       'all',   // 'all' | 'jersey' | 'shoes' | 'accessories'
+  brands:    [],      // ['nike','adidas',...] — lowercase
+  priceMin:  0,
+  priceMax:  999999,  // no upper cap by default — show everything
+  stock:     'all',   // 'all' | 'instock'
+  sort:      'featured',
+  search:    '',
+  page:      1,       // current page (1-based)
+  perPage:   12,      // products per page
+};
+
+// ---- Read URL params on page load ----
+(function() {
+  const p = new URLSearchParams(window.location.search);
+  const catParam   = p.get('cat');
+  const brandParam = p.get('brand');
+  const qParam     = p.get('q');
+
+  if (catParam) {
+    _state.cat = catParam.toLowerCase();
+    const radio = document.querySelector(`input[name="cat"][value="${_state.cat}"]`);
+    if (radio) radio.checked = true;
+    const labels = { jersey:'Jerseys', shoes:'Studs & Shoes', accessories:'Accessories' };
+    const label = labels[_state.cat] || catParam;
+    const titleEl = document.getElementById('shop-page-title');
+    const crumbEl = document.getElementById('breadcrumb-cat');
+    if (titleEl) titleEl.textContent = label.toUpperCase();
+    if (crumbEl) crumbEl.textContent = label;
   }
-  if (activeBrands.length) r = r.filter(p => activeBrands.includes(p.brand.toLowerCase()));
-  r = r.filter(p => p.price >= priceMin && p.price <= priceMax);
-  if (stockFilter === 'instock') r = r.filter(p => p.stock > 0);
-  if (activeSearch) { const q = activeSearch.toLowerCase(); r = r.filter(p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)); }
-  if (sortMode === 'price-asc') r.sort((a,b) => a.price - b.price);
-  else if (sortMode === 'price-desc') r.sort((a,b) => b.price - a.price);
-  else if (sortMode === 'rating') r.sort((a,b) => b.rating - a.rating);
-  else if (sortMode === 'discount') r.sort((a,b) => getDiscountPct(b) - getDiscountPct(a));
+
+  if (brandParam) {
+    const b = brandParam.toLowerCase();
+    _state.brands = [b];
+    // Tick the brand checkbox if it exists
+    const cb = document.querySelector(`input[type="checkbox"][value="${b}"]`);
+    if (cb) cb.checked = true;
+    const titleEl = document.getElementById('shop-page-title');
+    const crumbEl = document.getElementById('breadcrumb-cat');
+    if (titleEl) titleEl.textContent = brandParam.toUpperCase();
+    if (crumbEl) crumbEl.textContent = brandParam;
+    // Highlight matching chip
+    document.querySelectorAll('.filter-chip').forEach(c => {
+      c.classList.toggle('active', c.textContent.trim().toLowerCase() === b || c.getAttribute('data-filter') === b);
+    });
+  }
+
+  if (qParam) {
+    _state.search = qParam;
+    const titleEl = document.getElementById('shop-page-title');
+    const navInput = document.getElementById('nav-search-input');
+    if (titleEl) titleEl.textContent = `"${qParam}"`;
+    if (navInput) navInput.value = qParam;
+  }
+})();
+
+// ---- Core filter function — always reads window.PRODUCTS ----
+function _getFiltered() {
+  const all = window.PRODUCTS || [];
+  let r = [...all];
+
+  // Category filter
+  if (_state.cat && _state.cat !== 'all') {
+    r = r.filter(p => (p.category || '').toLowerCase() === _state.cat.toLowerCase());
+  }
+
+  // Brand filter — can come from chips OR sidebar checkboxes
+  if (_state.brands.length) {
+    r = r.filter(p => _state.brands.includes((p.brand || '').toLowerCase()));
+  }
+
+  // Price range
+  r = r.filter(p => {
+    const price = Number(p.price) || 0;
+    return price >= _state.priceMin && price <= _state.priceMax;
+  });
+
+  // Stock
+  if (_state.stock === 'instock') {
+    r = r.filter(p => Number(p.stock) > 0);
+  }
+
+  // Search text
+  if (_state.search) {
+    const q = _state.search.toLowerCase();
+    r = r.filter(p =>
+      (p.name     || '').toLowerCase().includes(q) ||
+      (p.brand    || '').toLowerCase().includes(q) ||
+      (p.category || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Sort
+  if (_state.sort === 'price-asc')  r.sort((a,b) => a.price - b.price);
+  else if (_state.sort === 'price-desc') r.sort((a,b) => b.price - a.price);
+  else if (_state.sort === 'rating')     r.sort((a,b) => (b.rating||0) - (a.rating||0));
+  else if (_state.sort === 'discount')   r.sort((a,b) => getDiscountPct(b) - getDiscountPct(a));
+  else {
+    // 'featured' — featured first, then rest
+    r.sort((a,b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+  }
+
   return r;
 }
 
-function updateFilterCounts() {
-  const all = PRODUCTS.length;
-  const jersey = PRODUCTS.filter(p => p.category === 'jersey').length;
-  const shoes = PRODUCTS.filter(p => p.category === 'shoes').length;
-  const accessories = PRODUCTS.filter(p => p.category === 'accessories').length;
+// ---- Sync sidebar controls to _state (without triggering re-render) ----
+function _readSidebar() {
+  const catRadio = document.querySelector('input[name="cat"]:checked');
+  if (catRadio) _state.cat = catRadio.value;
+
+  _state.brands = [...document.querySelectorAll('input[type="checkbox"]:checked')]
+    .map(c => c.value.toLowerCase());
+
+  const minEl = document.getElementById('price-min');
+  const maxEl = document.getElementById('price-max');
+  _state.priceMin = parseInt(minEl?.value) || 0;
+  const rawMax = parseInt(maxEl?.value);
+  _state.priceMax = (rawMax && rawMax < 999999) ? rawMax : 999999;
+
+  const stockRadio = document.querySelector('input[name="stock"]:checked');
+  if (stockRadio) _state.stock = stockRadio.value;
+
+  const sortEl = document.getElementById('sort-select');
+  if (sortEl) _state.sort = sortEl.value;
+}
+
+// ---- Sync sidebar UI to _state ----
+function _writeSidebar() {
+  // Category radio
+  const catRadio = document.querySelector(`input[name="cat"][value="${_state.cat}"]`);
+  if (catRadio) catRadio.checked = true;
+
+  // Brand checkboxes
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = _state.brands.includes(cb.value.toLowerCase());
+  });
+
+  // Price
+  const minEl = document.getElementById('price-min');
+  const maxEl = document.getElementById('price-max');
+  if (minEl) minEl.value = _state.priceMin || 0;
+  if (maxEl) maxEl.value = (_state.priceMax >= 999999) ? '' : _state.priceMax;
+
+  // Stock radio
+  const stockRadio = document.querySelector(`input[name="stock"][value="${_state.stock}"]`);
+  if (stockRadio) stockRadio.checked = true;
+
+  // Sort
+  const sortEl = document.getElementById('sort-select');
+  if (sortEl) sortEl.value = _state.sort;
+}
+
+// ---- Sync chip strip to _state ----
+function _writeChips() {
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    const f = c.getAttribute('data-filter');
+    let isActive = false;
+
+    if (f === 'all') {
+      // "All" chip is active only when no cat filter AND no brand filter
+      isActive = _state.cat === 'all' && _state.brands.length === 0 && !_state.search;
+    } else if (['jersey','shoes','accessories'].includes(f)) {
+      isActive = _state.cat === f && _state.brands.length === 0;
+    } else {
+      // Brand chip
+      isActive = _state.brands.length === 1 && _state.brands[0] === f && _state.cat === 'all';
+    }
+
+    c.classList.toggle('active', isActive);
+  });
+}
+
+// ---- Update filter counts in sidebar ----
+function _updateCounts() {
+  const all = window.PRODUCTS || [];
+  const cat = (c) => all.filter(p => (p.category||'').toLowerCase() === c).length;
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  s('fc-all', all); s('fc-jersey', jersey); s('fc-shoes', shoes); s('fc-accessories', accessories);
+  s('fc-all', all.length);
+  s('fc-jersey', cat('jersey'));
+  s('fc-shoes', cat('shoes'));
+  s('fc-accessories', cat('accessories'));
 }
 
-function renderShop() {
-  updateFilterCounts();
-  const filtered = getFiltered();
-  const grid = document.getElementById('shop-products-grid');
-  const noRes = document.getElementById('no-results');
-  const countEl = document.getElementById('product-result-count');
-  if (!grid) return;
-  if (countEl) countEl.textContent = `${filtered.length} Product${filtered.length !== 1 ? 's' : ''}`;
-  if (!filtered.length) { grid.innerHTML = ''; if (noRes) noRes.style.display = 'block'; }
-  else { if (noRes) noRes.style.display = 'none'; grid.innerHTML = filtered.map(p => buildProductCard(p)).join(''); }
-}
-// Expose so app.js can call after Firebase loads
-window.renderShop = renderShop;
+// ---- Active filter tags (Myntra-style pill row) ----
+function _renderActiveTags() {
+  const wrap = document.getElementById('active-filter-tags');
+  if (!wrap) return;
+  const tags = [];
 
-function applyFilter(val, btn) {
-  activeFilter = val; activeBrands = [];
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  const radio = document.querySelector(`input[name="cat"][value="${['jersey','shoes','accessories'].includes(val) ? val : 'all'}"]`);
-  if (radio) radio.checked = true;
-  renderShop();
-}
-
-function applyFromSidebar() {
-  activeFilter = document.querySelector('input[name="cat"]:checked')?.value || 'all';
-  activeBrands = [...document.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value);
-  priceMin = parseInt(document.getElementById('price-min').value) || 0;
-  priceMax = parseInt(document.getElementById('price-max').value) || 5000;
-  stockFilter = document.querySelector('input[name="stock"]:checked')?.value || 'all';
-  sortMode = document.getElementById('sort-select').value;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  document.querySelector('.filter-chip')?.classList.add('active');
-  renderShop();
-}
-
-function clearFilters() {
-  activeFilter = 'all'; activeBrands = []; priceMin = 0; priceMax = 5000; activeSearch = ''; stockFilter = 'all'; sortMode = 'featured';
-  document.querySelector('input[name="cat"][value="all"]').checked = true;
-  document.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
-  document.getElementById('price-min').value = 0; document.getElementById('price-max').value = 5000;
-  document.querySelector('input[name="stock"][value="all"]').checked = true;
-  document.getElementById('sort-select').value = 'featured';
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  document.querySelector('.filter-chip').classList.add('active');
-  renderShop();
-}
-
-// URL params
-const params = new URLSearchParams(window.location.search);
-const catParam = params.get('cat');
-const brandParam = params.get('brand');
-const qParam = params.get('q');
-
-if (catParam) {
-  activeFilter = catParam;
-  const radio = document.querySelector(`input[name="cat"][value="${catParam}"]`);
-  if (radio) radio.checked = true;
-  const labels = { jersey:'Jerseys', shoes:'Studs & Shoes', accessories:'Accessories' };
-  if (labels[catParam]) {
-    document.getElementById('shop-page-title').textContent = labels[catParam].toUpperCase();
-    document.getElementById('breadcrumb-cat').textContent = labels[catParam];
+  if (_state.cat !== 'all') {
+    const labels = { jersey:'Jersey', shoes:'Shoes / Studs', accessories:'Accessories' };
+    tags.push({ label: labels[_state.cat] || _state.cat, clear: () => { _state.cat = 'all'; _state.page = 1; _render(); } });
   }
-}
-if (brandParam) {
-  activeFilter = brandParam.toLowerCase();
-  document.getElementById('shop-page-title').textContent = brandParam.toUpperCase();
-  document.getElementById('breadcrumb-cat').textContent = brandParam;
-}
-if (qParam) {
-  activeSearch = qParam;
-  document.getElementById('shop-page-title').textContent = `"${qParam}"`;
-  document.getElementById('nav-search-input').value = qParam;
+  _state.brands.forEach(b => {
+    tags.push({ label: b.charAt(0).toUpperCase() + b.slice(1), clear: () => {
+      _state.brands = _state.brands.filter(x => x !== b); _state.page = 1; _render();
+    }});
+  });
+  if (_state.priceMin > 0 || _state.priceMax < 999999) {
+    const label = _state.priceMax < 999999
+      ? `₹${_state.priceMin.toLocaleString('en-IN')} – ₹${_state.priceMax.toLocaleString('en-IN')}`
+      : `From ₹${_state.priceMin.toLocaleString('en-IN')}`;
+    tags.push({ label, clear: () => { _state.priceMin = 0; _state.priceMax = 999999; _state.page = 1; _render(); } });
+  }
+  if (_state.stock === 'instock') {
+    tags.push({ label: 'In Stock Only', clear: () => { _state.stock = 'all'; _state.page = 1; _render(); } });
+  }
+  if (_state.search) {
+    tags.push({ label: `"${_state.search}"`, clear: () => { _state.search = ''; _state.page = 1; _render(); } });
+  }
+
+  if (!tags.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = tags.map((t, i) => `
+    <button onclick="_activeTagClear(${i})" style="
+      display:inline-flex;align-items:center;gap:6px;
+      background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3);
+      border-radius:100px;padding:5px 12px 5px 10px;
+      font-family:var(--font-cond);font-size:11px;font-weight:700;
+      letter-spacing:0.06em;text-transform:uppercase;color:var(--blue);cursor:pointer;
+      transition:background 0.15s;white-space:nowrap;"
+      onmouseover="this.style.background='rgba(56,189,248,0.22)'"
+      onmouseout="this.style.background='rgba(56,189,248,0.12)'">
+      ${t.label}
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>`).join('');
+  // Store closures for onclick
+  window._activeTagClearFns = tags.map(t => t.clear);
 }
 
-if (window.innerWidth < 1024) document.getElementById('filter-toggle-btn').style.display = 'inline-flex';
-// renderShop() is called by app.js after Firebase products load.
-// Show loading state immediately.
+window._activeTagClear = function(i) {
+  if (window._activeTagClearFns && window._activeTagClearFns[i]) {
+    window._activeTagClearFns[i]();
+  }
+};
+
+// ---- Pagination renderer ----
+function _renderPagination(totalFiltered) {
+  const pag = document.getElementById('shop-pagination');
+  if (!pag) return;
+
+  const totalPages = Math.ceil(totalFiltered / _state.perPage);
+  if (totalPages <= 1) { pag.style.display = 'none'; return; }
+
+  pag.style.display = 'flex';
+  const cur = _state.page;
+
+  // Build page number buttons (show up to 5 around current)
+  let pageButtons = '';
+  const range = (start, end) => Array.from({length: end - start + 1}, (_, i) => start + i);
+  let pages = [];
+  if (totalPages <= 7) {
+    pages = range(1, totalPages);
+  } else if (cur <= 4) {
+    pages = [...range(1, 5), '...', totalPages];
+  } else if (cur >= totalPages - 3) {
+    pages = [1, '...', ...range(totalPages - 4, totalPages)];
+  } else {
+    pages = [1, '...', ...range(cur - 1, cur + 1), '...', totalPages];
+  }
+
+  const pageBtn = (p) => {
+    if (p === '...') return `<span style="display:flex;align-items:center;padding:0 6px;color:var(--silver);font-family:var(--font-cond);font-size:13px;">…</span>`;
+    const isActive = p === cur;
+    return `<button onclick="_goToPage(${p})" style="
+      min-width:36px;height:36px;border-radius:8px;cursor:pointer;
+      font-family:var(--font-cond);font-size:13px;font-weight:700;letter-spacing:0.04em;
+      border:1px solid ${isActive ? 'var(--blue)' : 'var(--border-solid)'};
+      background:${isActive ? 'var(--blue)' : 'var(--dark-3)'};
+      color:${isActive ? 'var(--dark)' : 'var(--white)'};
+      transition:all 0.15s;padding:0 10px;"
+      onmouseover="if(${!isActive}){this.style.borderColor='rgba(56,189,248,0.5)';this.style.color='var(--blue)';}"
+      onmouseout="if(${!isActive}){this.style.borderColor='var(--border-solid)';this.style.color='var(--white)';}">
+      ${p}
+    </button>`;
+  };
+
+  pag.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:32px 0 8px;">
+      <!-- First page -->
+      <button onclick="_goToPage(1)" ${cur === 1 ? 'disabled' : ''} style="
+        display:flex;align-items:center;gap:4px;height:36px;padding:0 14px;border-radius:8px;cursor:${cur===1?'default':'pointer'};
+        font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+        border:1px solid var(--border-solid);background:var(--dark-3);
+        color:${cur===1?'var(--silver)':'var(--white)'};transition:all 0.15s;opacity:${cur===1?'0.4':'1'};"
+        onmouseover="if(${cur!==1}){this.style.borderColor='rgba(56,189,248,0.5)';}"
+        onmouseout="this.style.borderColor='var(--border-solid)';">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 17l-5-5 5-5"/><path d="M18 17l-5-5 5-5"/></svg>
+        Page 1
+      </button>
+
+      <!-- Previous -->
+      <button onclick="_goToPage(${cur - 1})" ${cur === 1 ? 'disabled' : ''} style="
+        display:flex;align-items:center;gap:4px;height:36px;padding:0 14px;border-radius:8px;cursor:${cur===1?'default':'pointer'};
+        font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+        border:1px solid var(--border-solid);background:var(--dark-3);
+        color:${cur===1?'var(--silver)':'var(--white)'};transition:all 0.15s;opacity:${cur===1?'0.4':'1'};"
+        onmouseover="if(${cur!==1}){this.style.borderColor='rgba(56,189,248,0.5)';}"
+        onmouseout="this.style.borderColor='var(--border-solid)';">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Previous
+      </button>
+
+      <!-- Page number buttons -->
+      <div style="display:flex;align-items:center;gap:4px;">
+        ${pages.map(pageBtn).join('')}
+      </div>
+
+      <!-- Page X of Y -->
+      <span style="
+        height:36px;display:flex;align-items:center;padding:0 14px;
+        font-family:var(--font-cond);font-size:12px;font-weight:700;letter-spacing:0.06em;
+        color:var(--silver);text-transform:uppercase;white-space:nowrap;">
+        Page ${cur} of ${totalPages}
+      </span>
+
+      <!-- Next -->
+      <button onclick="_goToPage(${cur + 1})" ${cur === totalPages ? 'disabled' : ''} style="
+        display:flex;align-items:center;gap:4px;height:36px;padding:0 18px;border-radius:8px;cursor:${cur===totalPages?'default':'pointer'};
+        font-family:var(--font-cond);font-size:13px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;
+        border:1px solid ${cur===totalPages?'var(--border-solid)':'var(--blue)'};
+        background:${cur===totalPages?'var(--dark-3)':'var(--blue)'};
+        color:${cur===totalPages?'var(--silver)':'var(--dark)'};transition:all 0.15s;opacity:${cur===totalPages?'0.4':'1'};"
+        onmouseover="if(${cur!==totalPages}){this.style.background='var(--blue-dark)';}"
+        onmouseout="if(${cur!==totalPages}){this.style.background='var(--blue)';}">
+        Next
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>`;
+}
+
+window._goToPage = function(page) {
+  const filtered = _getFiltered();
+  const totalPages = Math.ceil(filtered.length / _state.perPage);
+  if (page < 1 || page > totalPages) return;
+  _state.page = page;
+  _renderPage(filtered);
+  // Scroll to top of grid smoothly
+  document.getElementById('shop-products-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function _renderPage(filtered) {
+  const grid  = document.getElementById('shop-products-grid');
+  const noRes = document.getElementById('no-results');
+  if (!grid) return;
+
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    if (noRes) noRes.style.display = 'block';
+    _renderPagination(0);
+    return;
+  }
+
+  if (noRes) noRes.style.display = 'none';
+
+  const start = (_state.page - 1) * _state.perPage;
+  const end   = start + _state.perPage;
+  const pageProducts = filtered.slice(start, end);
+  grid.innerHTML = pageProducts.map(p => buildProductCard(p)).join('');
+  _renderPagination(filtered.length);
+}
+
+// ---- Main render ----
+function _render() {
+  _updateCounts();
+  _writeSidebar();
+  _writeChips();
+  _renderActiveTags();
+
+  const filtered = _getFiltered();
+  const grid    = document.getElementById('shop-products-grid');
+  const noRes   = document.getElementById('no-results');
+  const countEl = document.getElementById('product-result-count');
+
+  if (!grid) return;
+
+  const total = (window.PRODUCTS || []).length;
+  if (countEl) {
+    const showing = Math.min(_state.perPage, filtered.length - (_state.page - 1) * _state.perPage);
+    countEl.textContent = filtered.length === total
+      ? `${total} Product${total !== 1 ? 's' : ''}`
+      : `${filtered.length} of ${total} Product${total !== 1 ? 's' : ''}`;
+  }
+
+  _renderPage(filtered);
+}
+
+// ---- Public API ----
+
+// Called by filter chip buttons (data-filter attribute)
+window.applyFilter = function(val, btn) {
+  const brands = ['nike','adidas','mizuno','jordan'];
+  if (val === 'all') {
+    _state.cat = 'all';
+    _state.brands = [];
+    _state.search = '';
+  } else if (brands.includes(val)) {
+    _state.cat = 'all';
+    _state.brands = [val];
+  } else {
+    _state.cat = val;
+    _state.brands = [];
+  }
+  _state.page = 1;
+  _render();
+};
+
+// Called by sidebar inputs (onchange)
+window.applyFromSidebar = function() {
+  _readSidebar();
+  _state.page = 1;
+  _render();
+};
+
+// Called by "Clear All" button
+window.clearFilters = function() {
+  _state.cat    = 'all';
+  _state.brands = [];
+  _state.priceMin = 0;
+  _state.priceMax = 999999;
+  _state.stock  = 'all';
+  _state.sort   = 'featured';
+  _state.search = '';
+  _state.page   = 1;
+  _render();
+};
+
+// Called by app.js after Firebase products load
+window.renderShop = function() { _render(); };
+
+if (window.innerWidth < 1024) {
+  document.getElementById('filter-toggle-btn').style.display = 'inline-flex';
+}
 document.getElementById('product-result-count').textContent = 'Loading...';
 </script>
 </body>
