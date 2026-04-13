@@ -331,15 +331,29 @@
             <div><label class="form-label">Badge</label><select class="form-input" id="pf-badge"><option value="">None</option><option value="bestseller">Best Seller</option><option value="new">New Arrival</option><option value="sale">Sale</option></select></div>
             <div><label class="form-label">Featured on Homepage?</label><select class="form-input" id="pf-featured"><option value="false">No</option><option value="true">Yes</option></select></div>
             <div class="fg-full">
-              <label class="form-label">Product Images * (upload to Cloudinary)</label>
-              <input type="file" id="pf-img-files" accept="image/*" multiple
-                style="font-size:12px;color:var(--white);background:var(--dark-3);border:1px solid var(--border-solid);border-radius:var(--radius-sm);padding:8px;width:100%;cursor:pointer;box-sizing:border-box;"
-                onchange="handleImageFileSelect(this)"/>
-              <div id="pf-img-preview-strip" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;min-height:20px;"></div>
-              <div id="pf-img-upload-status" style="font-size:11px;color:var(--silver);margin-top:4px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;"></div>
-              <div style="margin-top:8px;">
-                <label class="form-label" style="font-size:10px;color:var(--silver);">Or paste a direct image URL (fallback)</label>
-                <input class="form-input" type="url" id="pf-img" placeholder="https://..." oninput="updatePreview()" style="margin-top:4px;"/>
+              <label class="form-label">Product Images * — up to 8 images per product</label>
+
+              <!-- Current images + pending new files preview (rendered by renderImageManager()) -->
+              <div id="pf-img-preview-strip" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;min-height:20px;"></div>
+              <div id="pf-img-upload-status" style="font-size:11px;color:var(--silver);margin-bottom:10px;font-family:var(--font-cond);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;"></div>
+
+              <!-- Upload new files (adds ON TOP of existing, does not replace) -->
+              <label style="display:flex;align-items:center;gap:8px;background:var(--dark-3);border:1px dashed rgba(56,189,248,0.35);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue);transition:border-color 0.2s;"
+                onmouseenter="this.style.borderColor='rgba(56,189,248,0.7)'" onmouseleave="this.style.borderColor='rgba(56,189,248,0.35)'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                + Upload Image Files (adds to existing)
+                <input type="file" id="pf-img-files" accept="image/*" multiple style="display:none;" onchange="handleImageFileSelect(this)"/>
+              </label>
+              <div style="font-size:11px;color:var(--silver);margin-top:5px;margin-bottom:10px;">Select multiple files at once · Existing images are preserved · Click ✕ on any image to remove it</div>
+
+              <!-- Add via URL -->
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input class="form-input" type="url" id="pf-img-url-add" placeholder="Paste Cloudinary image URL and click Add →" style="flex:1;font-size:12px;"/>
+                <button type="button" onclick="addImageUrl()"
+                  style="background:var(--dark-3);color:var(--blue);border:1px solid rgba(56,189,248,0.3);border-radius:var(--radius-sm);padding:10px 14px;font-family:var(--font-cond);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:border-color 0.2s;"
+                  onmouseenter="this.style.borderColor='rgba(56,189,248,0.7)'" onmouseleave="this.style.borderColor='rgba(56,189,248,0.3)'">
+                  + Add URL
+                </button>
               </div>
             </div>
             <div class="fg-full"><label class="form-label">Sizes (comma separated)</label><input class="form-input" type="text" id="pf-sizes" placeholder="S, M, L, XL, XXL"/></div>
