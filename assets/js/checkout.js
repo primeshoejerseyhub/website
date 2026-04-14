@@ -53,65 +53,57 @@ function generateOrderId() {
   return "PSJH-" + Date.now().toString(36).toUpperCase() + "-" + Math.floor(1000 + Math.random() * 9000);
 }
 
-// ---- Generate UPI deep links ----
-// Generic: upi://pay  (Android app-chooser, iOS opens default handler)
-// GPay iOS:    gpay://upi/pay  (tez:// also works on older versions)
-// PhonePe iOS: phonepe://pay
-// Paytm iOS:   paytmmp://pay
-// All share the same query params: pa, pn, am, cu, tn
-function buildUpiParams(amount, orderId) {
+// ---- Generate UPI deep link ----
+// Rules:
+//   pa  = raw VPA — NEVER encode, @ must stay as @
+//   pn  = store name — encode spaces
+//   am  = amount with exactly 2 decimal places e.g. "2499.00"
+//   tn  = short note — encode
+//   cu  = INR always
+function generateUpiLink(amount, orderId) {
   const pa = UPI_ID;
   const pn = encodeURIComponent(STORE_NAME);
   const am = Number(amount).toFixed(2);
   const tn = encodeURIComponent("Order " + orderId);
-  return `pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+  return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
 }
 
-function generateUpiLink(amount, orderId) {
-  return `upi://pay?${buildUpiParams(amount, orderId)}`;
-}
-
-function generateAppUpiLink(appId, amount, orderId) {
-  const params = buildUpiParams(amount, orderId);
-  switch (appId) {
-    case "gpay":    return `gpay://upi/pay?${params}`;
-    case "phonepe": return `phonepe://pay?${params}`;
-    case "paytm":   return `paytmmp://pay?${params}`;
-    default:        return `upi://pay?${params}`;  // generic — Android chooser / iOS default
-  }
-}
-
-// ---- handleUpiClick(event, appId) — called from onclick on each app <a> tag ----
+// ---- handleUpiClick — called from onclick on the <a> tag ----
 //
-// appId: 'gpay' | 'phonepe' | 'paytm' | 'generic'
+// THE DEFINITIVE iOS FIX:
 //
-// Each app button has its own href set at tap time via setUpiAppHrefs().
-// iOS requires the href to be on the <a> element — JS navigation won't work.
-// We set ALL four hrefs in showPaymentScreen() so they are ready before any tap.
+// WHAT FAILED:
+//   1. iframe.src = "upi://..."   → iOS silently blocks, no error thrown
+//   2. window.location.href set inside window.payViaUpi() called via onclick
+//      from a <button> in a type="module" script → iOS breaks the user
+//      gesture chain through module scope, so upi:// is blocked
 //
-window.handleUpiClick = function(e, appId) {
-  appId = appId || "generic";
-  const btnId = {
-    gpay: "upi-btn-gpay",
-    phonepe: "upi-btn-phonepe",
-    paytm: "upi-btn-paytm",
-    generic: "upi-btn-generic"
-  }[appId] || "upi-btn-generic";
-  const btn = document.getElementById(btnId);
+// WHAT WORKS ON iOS (only option):
+//   An <a href="upi://..."> that the user physically taps.
+//   iOS reads the href AT tap time and opens the registered UPI app handler.
+//   The href must be set BEFORE the page is shown (in showPaymentScreen).
+//   onclick on the <a> can still run JS for UI feedback — but the href
+//   is what actually opens the app, not any JS navigation call.
+//
+// This works on Android too — Android follows <a href="upi://"> natively.
+//
+window.handleUpiClick = function(e) {
+  const btn = document.getElementById("upi-pay-btn");
 
-  // Guard: if href is still "#" — order not placed yet
-  if (!btn || btn.getAttribute("href") === "#") {
+  // If href is still "#" — order not placed yet, block navigation
+  if (!btn || btn.getAttribute("href") === "#" || !btn.getAttribute("href").startsWith("upi://")) {
     e.preventDefault();
     if (window.showToast) showToast("Please fill your details and place the order first.", "error");
     return;
   }
 
-  // Let the browser follow the href natively — critical for iOS
-  // Don't preventDefault() here
+  // href is already set to upi://... — let the browser follow it natively (don't preventDefault)
+  // iOS will open the UPI app picker. Android will open app chooser.
 
   let wasHidden = false;
   let appOpened = false;
 
+  // Watch for user returning from UPI app
   const onVisibility = () => {
     if (document.hidden) {
       wasHidden = true;
@@ -121,25 +113,44 @@ window.handleUpiClick = function(e, appId) {
       clearTimeout(noAppTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       showSwitchBackNudge();
+      if (btn) {
+        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Payment Done? Upload Screenshot ↓`;
+        btn.style.background = "linear-gradient(135deg,#22c55e 0%,#16a34a 100%)";
+        btn.style.boxShadow = "0 4px 20px rgba(34,197,94,0.35)";
+        btn.style.fontSize = "14px";
+      }
     }
   };
 
+  // Only show "no app" if page was NEVER hidden (user never left — means no app opened)
+  // If page IS hidden when timer fires, user is inside the UPI app right now — do NOT reset
   const noAppTimer = setTimeout(() => {
     document.removeEventListener("visibilitychange", onVisibility);
     if (!appOpened && !document.hidden) {
       showUpiNotFoundMessage();
+      if (btn) {
+        btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pay Now via UPI <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+        btn.style.background = "";
+        btn.style.boxShadow = "";
+        btn.style.fontSize = "";
+      }
     } else if (!appOpened && document.hidden) {
-      // Still in the app — re-attach
+      // Still in UPI app — re-attach listener to catch return
       document.addEventListener("visibilitychange", onVisibility);
     }
   }, 4000);
 
   document.addEventListener("visibilitychange", onVisibility);
+
+  // Visual feedback — show "opening" state
+  if (btn) {
+    btn.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span> Opening UPI App...`;
+  }
 };
 
-// Keep payViaUpi as alias so any old references don't crash
+// Keep payViaUpi as a no-op alias so any old references don't crash
 window.payViaUpi = function() {
-  const btn = document.getElementById("upi-btn-generic");
+  const btn = document.getElementById("upi-pay-btn");
   if (btn) btn.click();
 };
 
@@ -374,47 +385,18 @@ function showPaymentScreen({ orderId, name, total }) {
 
   safeHref("track-btn", `tracking.html?id=${orderId}`);
 
-  // Set the deep link href on ALL four app buttons BEFORE showing the payment screen.
-  // iOS reads href at tap time — must be set in advance.
-  // Each app gets its own scheme so iOS opens exactly that app, not the default handler.
-  if (_pendingOrderMeta) {
-    const { total, orderId } = _pendingOrderMeta;
-    const appLinks = {
-      "upi-btn-gpay":    generateAppUpiLink("gpay",    total, orderId),
-      "upi-btn-phonepe": generateAppUpiLink("phonepe", total, orderId),
-      "upi-btn-paytm":   generateAppUpiLink("paytm",   total, orderId),
-      "upi-btn-generic": generateAppUpiLink("generic", total, orderId),
-    };
-    Object.entries(appLinks).forEach(([id, href]) => {
-      const el = document.getElementById(id);
-      if (el) el.href = href;
-    });
+  // Set the upi:// href on the anchor BEFORE showing payment screen.
+  // iOS reads href at tap time — it must be set in advance, not during the click.
+  const upiPayBtn = document.getElementById("upi-pay-btn");
+  if (upiPayBtn) {
+    upiPayBtn.href = generateUpiLink(total, orderId);
   }
 
   // Hide fallback message initially
   const fallbackMsg = document.getElementById("upi-fallback-msg");
   if (fallbackMsg) fallbackMsg.style.display = "none";
 
-  const waMsg = encodeURIComponent(
-`NEW ORDER
-Prime Shoe Jersey Hub
-Order ID: ${orderId}
-
-• Name: ${name}
-  Phone: ${_pendingOrderData?.phone || ""}
-
-• Address: ${_pendingOrderData?.address || ""}
-
-Items Ordered:
-${(_pendingOrderData?.items || []).map(i =>
-  `• ${i.name} | Size: ${i.size} | Qty: ${i.qty} | ${i.price * i.qty} Rs`
-).join("\n")}
-
-• Total Paid: ${total} Rs
-
-• Payment screenshot uploaded. Please confirm & process`
-  );
-  safeHref("whatsapp-btn", `https://wa.me/${WA_NUMBER}?text=${waMsg}`);
+  // No WhatsApp button on payment screen — WA notify button is on the success screen instead
 
   // Step indicators
   document.querySelectorAll(".csi-step").forEach(s => s.classList.remove("active"));
@@ -488,11 +470,11 @@ function showSuccessScreen({ orderId, name, total }) {
   const trackBtn = document.getElementById("success-track-btn");
   if (trackBtn) trackBtn.href = `tracking.html?id=${orderId}`;
 
-  // Set manual WhatsApp fallback link with clean format
-  const waLink = document.getElementById("wa-manual-link");
-  if (waLink && _pendingOrderData) {
+  // Build the WhatsApp notify message and set on the button
+  const waNotifyBtn = document.getElementById("wa-notify-btn");
+  if (waNotifyBtn && _pendingOrderData) {
     const d = _pendingOrderData;
-    const resendMsg = encodeURIComponent(
+    const waMsg = encodeURIComponent(
 `NEW ORDER
 Prime Shoe Jersey Hub
 Order ID: ${d.orderId}
@@ -511,7 +493,7 @@ ${(d.items || []).map(i =>
 
 • Payment screenshot uploaded. Please confirm & process`
     );
-    waLink.href = `https://wa.me/${WA_NUMBER}?text=${resendMsg}`;
+    waNotifyBtn.href = `https://wa.me/${WA_NUMBER}?text=${waMsg}`;
   }
 
   // Step indicators
