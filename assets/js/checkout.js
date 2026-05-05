@@ -12,7 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ---- CONFIG ----
-const UPI_ID = "8210647493@kotak811";
+const UPI_ID = "8210647493@okbizaxis";
 const STORE_NAME = "Prime Shoe Jersey Hub";
 const WA_NUMBER = "919239394022";
 
