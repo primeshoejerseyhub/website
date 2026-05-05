@@ -1,12 +1,10 @@
-// ============================================
-// PRIME SHOE JERSEY HUB — App v4 (Fixed)
-// ============================================
+
 
 import { fetchAllProducts } from "./products.js";
 
 // ---- STORE CONFIG ----
 const STORE_CONFIG = {
-  upiId: "8210647493@kotak811",
+  upiId: "8210647493@okbizaxis",
   whatsappNumber: "919239394022",
   storeName: "Prime Shoe Jersey Hub",
 };
